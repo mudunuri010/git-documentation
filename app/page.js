@@ -7,7 +7,7 @@ const GitScenariosDocumentation = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('introduction');
 
-  const documentation = {
+  const documentation = useMemo(() => ({
     introduction: {
       title: 'Introduction',
       icon: Home,
@@ -41,8 +41,8 @@ Choose a scenario from the sidebar that matches your current situation. Each sec
 Configure Git with your identity:
 
 \`\`\`bash
-git config --global user.name "Your Name"
-git config --global user.email "your.email@example.com"
+git config --global user.name 'Your Name'
+git config --global user.email 'your.email@example.com'
 \`\`\`
 
 ## Set Default Branch Name
@@ -66,8 +66,8 @@ git config --global core.autocrlf input
 ## Setup Default Editor
 
 \`\`\`bash
-git config --global core.editor "code --wait"  # VS Code
-git config --global core.editor "vim"          # Vim
+git config --global core.editor 'code --wait'  # VS Code
+git config --global core.editor 'vim'          # Vim
 \`\`\`
 
 ## View Your Configuration
@@ -81,7 +81,7 @@ git config user.name  # View specific setting
 
 **Generate SSH key:**
 \`\`\`bash
-ssh-keygen -t ed25519 -C "your.email@example.com"
+ssh-keygen -t ed25519 -C 'your.email@example.com'
 \`\`\`
 
 **Add to SSH agent:**
@@ -114,9 +114,9 @@ git init
 
 Create a README and make first commit:
 \`\`\`bash
-echo "# My Project" > README.md
+echo '# My Project' > README.md
 git add README.md
-git commit -m "Initial commit"
+git commit -m 'Initial commit'
 \`\`\`
 
 ## Scenario 2: Clone Existing Repository
@@ -163,7 +163,7 @@ git fetch upstream
 ## .gitignore Setup
 
 Create .gitignore file:
-\`\`\`bash
+\`\`\`
 # Node.js
 node_modules/
 npm-debug.log
@@ -205,28 +205,28 @@ git checkout -b feature/new-feature
 
 \`\`\`bash
 # Make changes to files
-git status                    # See what changed
-git diff                      # See exact changes
-git add .                     # Stage all changes
-git add file.txt              # Stage specific file
-git commit -m "Add feature X"
+git status          # See what changed
+git diff            # See exact changes
+git add .           # Stage all changes
+git add file.txt    # Stage specific file
+git commit -m 'Add feature X'
 \`\`\`
 
 ## Scenario 3: Commit Message Best Practices
 
 **Good commit messages:**
 \`\`\`bash
-git commit -m "Add user authentication feature"
-git commit -m "Fix: Resolve login timeout issue"
-git commit -m "Refactor: Improve database query performance"
-git commit -m "Docs: Update API documentation"
+git commit -m 'Add user authentication feature'
+git commit -m 'Fix: Resolve login timeout issue'
+git commit -m 'Refactor: Improve database query performance'
+git commit -m 'Docs: Update API documentation'
 \`\`\`
 
 **Multi-line commits:**
 \`\`\`bash
-git commit -m "Add payment processing" -m "- Integrate Stripe API
+git commit -m 'Add payment processing' -m '- Integrate Stripe API
 - Add payment validation
-- Create transaction history"
+- Create transaction history'
 \`\`\`
 
 ## Scenario 4: Amending Last Commit
@@ -239,31 +239,31 @@ git commit --amend --no-edit
 
 **Change commit message:**
 \`\`\`bash
-git commit --amend -m "Better commit message"
+git commit --amend -m 'Better commit message'
 \`\`\`
 
 ## Scenario 5: Viewing History
 
 \`\`\`bash
-git log                       # Full history
-git log --oneline            # Compact view
-git log --graph --oneline    # Visual branch graph
-git log -n 5                 # Last 5 commits
-git log --author="John"      # Commits by author
-git log --since="2 weeks ago"
+git log                 # Full history
+git log --oneline       # Compact view
+git log --graph --oneline   # Visual branch graph
+git log -n 5            # Last 5 commits
+git log --author='John'     # Commits by author
+git log --since='2 weeks ago'
 \`\`\`
 
 ## Scenario 6: Undoing Changes
 
 **Undo changes in working directory:**
 \`\`\`bash
-git checkout -- file.txt     # Discard changes to file
-git restore file.txt         # (Git 2.23+)
+git checkout -- file.txt    # Discard changes to file
+git restore file.txt        # (Git 2.23+)
 \`\`\`
 
 **Unstage files:**
 \`\`\`bash
-git reset HEAD file.txt      # Unstage file
+git reset HEAD file.txt     # Unstage file
 git restore --staged file.txt # (Git 2.23+)
 \`\`\`
 
@@ -282,20 +282,20 @@ git reset --hard HEAD~1
 **Need to switch branches but not ready to commit:**
 
 \`\`\`bash
-git stash                    # Save current changes
-git stash save "WIP: feature X"  # Save with message
-git checkout other-branch    # Switch branches
+git stash                   # Save current changes
+git stash save 'WIP: feature X'  # Save with message
+git checkout other-branch   # Switch branches
 git checkout feature-branch  # Come back
-git stash pop                # Restore changes
+git stash pop               # Restore changes
 \`\`\`
 
 **View stashes:**
 \`\`\`bash
 git stash list
-git stash show               # Show latest stash
-git stash apply stash@{0}    # Apply specific stash
-git stash drop stash@{0}     # Delete specific stash
-git stash clear              # Delete all stashes
+git stash show            # Show latest stash
+git stash apply stash@{0}   # Apply specific stash
+git stash drop stash@{0}    # Delete specific stash
+git stash clear             # Delete all stashes
 \`\`\``
     },
     'branching': {
@@ -314,7 +314,7 @@ git checkout feature/login
 **Create and switch in one command:**
 \`\`\`bash
 git checkout -b feature/login
-git switch -c feature/login    # (Git 2.23+)
+git switch -c feature/login   # (Git 2.23+)
 \`\`\`
 
 ## Scenario 2: Branch from Specific Commit
@@ -328,11 +328,11 @@ git checkout -b hotfix abc1234
 ## Scenario 3: List and Manage Branches
 
 \`\`\`bash
-git branch                   # List local branches
-git branch -a                # List all branches (including remote)
-git branch -r                # List remote branches
-git branch -d feature/old    # Delete local branch
-git branch -D feature/old    # Force delete
+git branch        # List local branches
+git branch -a     # List all branches (including remote)
+git branch -r     # List remote branches
+git branch -d feature/old   # Delete local branch
+git branch -D feature/old   # Force delete
 git push origin --delete feature/old  # Delete remote branch
 \`\`\`
 
@@ -400,8 +400,8 @@ git checkout -b feature/add-search
 ## Scenario 7: Compare Branches
 
 \`\`\`bash
-git diff main..feature/login           # See differences
-git log main..feature/login            # See commits
+git diff main..feature/login        # See differences
+git log main..feature/login         # See commits
 git log --oneline main..feature/login  # Compact view
 \`\`\``
     },
@@ -452,7 +452,7 @@ Feature branch content
 
 \`\`\`bash
 git add file.txt
-git commit -m "Merge feature/login and resolve conflicts"
+git commit -m 'Merge feature/login and resolve conflicts'
 \`\`\`
 
 **Abort merge:**
@@ -491,7 +491,7 @@ git merge -X ours feature/login
 \`\`\`bash
 git checkout main
 git merge --squash feature/login
-git commit -m "Add login feature"
+git commit -m 'Add login feature'
 \`\`\`
 
 ## Scenario 6: No Fast-Forward Merge
@@ -683,7 +683,7 @@ git checkout -b feature/new-feature
 
 # 2. Make changes and commit
 git add .
-git commit -m "Add new feature"
+git commit -m 'Add new feature'
 
 # 3. Push to remote
 git push -u origin feature/new-feature
@@ -698,7 +698,7 @@ git push -u origin feature/new-feature
 \`\`\`bash
 # Make changes
 git add .
-git commit -m "Address review comments"
+git commit -m 'Address review comments'
 git push origin feature/new-feature
 # PR automatically updates
 \`\`\`
@@ -760,7 +760,7 @@ git checkout feature/their-feature
 
 # Make changes
 git add .
-git commit -m "Add improvements"
+git commit -m 'Add improvements'
 git push origin feature/their-feature
 \`\`\`
 
@@ -774,7 +774,7 @@ git fetch origin
 git merge origin/main
 # Resolve conflicts
 git add .
-git commit -m "Resolve merge conflicts"
+git commit -m 'Resolve merge conflicts'
 git push origin feature/new-feature
 \`\`\`
 
@@ -854,7 +854,7 @@ git push --force-with-lease
 
 # Remove from history (use with caution)
 git filter-branch --force --index-filter \
-  "git rm --cached --ignore-unmatch sensitive-file.txt" \
+  'git rm --cached --ignore-unmatch sensitive-file.txt' \
   --prune-empty --tag-name-filter cat -- --all
 \`\`\`
 
@@ -966,7 +966,7 @@ git filter-branch --tree-filter 'rm -f large-file.zip' HEAD
 **Solution:**
 
 \`\`\`bash
-git commit --amend -m "Correct message"
+git commit --amend -m 'Correct message'
 git push --force-with-lease origin branch-name
 \`\`\`
 
@@ -998,8 +998,8 @@ git push --force-with-lease origin branch-name
 
 \`\`\`bash
 git bisect start
-git bisect bad                 # Current commit is bad
-git bisect good abc1234        # Known good commit
+git bisect bad            # Current commit is bad
+git bisect good abc1234       # Known good commit
 
 # Git checks out middle commit
 # Test and mark as good or bad
@@ -1008,7 +1008,7 @@ git bisect good
 git bisect bad
 
 # Repeat until found
-git bisect reset              # Return to original state
+git bisect reset            # Return to original state
 \`\`\`
 
 ## Scenario 2: Git Hooks
@@ -1032,7 +1032,7 @@ chmod +x .git/hooks/pre-commit
 **Add submodule:**
 \`\`\`bash
 git submodule add https://github.com/user/lib.git libs/mylib
-git commit -m "Add submodule"
+git commit -m 'Add submodule'
 \`\`\`
 
 **Clone with submodules:**
@@ -1149,11 +1149,11 @@ git archive --format=tar.gz HEAD > project.tar.gz
 ## Scenario 12: Clean Untracked Files
 
 \`\`\`bash
-git clean -n                  # Dry run
-git clean -f                  # Remove files
-git clean -fd                 # Remove files and directories
-git clean -fX                 # Remove ignored files
-git clean -fx                 # Remove ignored and untracked
+git clean -n            # Dry run
+git clean -f            # Remove files
+git clean -fd           # Remove files and directories
+git clean -fX           # Remove ignored files
+git clean -fx           # Remove ignored and untracked
 \`\`\``
     },
     'team-workflows': {
@@ -1198,12 +1198,12 @@ git checkout develop
 git checkout -b release/1.0.0
 
 # Version bump, final fixes
-git commit -m "Bump version to 1.0.0"
+git commit -m 'Bump version to 1.0.0'
 
 # Merge to main
 git checkout main
 git merge --no-ff release/1.0.0
-git tag -a v1.0.0 -m "Release 1.0.0"
+git tag -a v1.0.0 -m 'Release 1.0.0'
 
 # Merge back to develop
 git checkout develop
@@ -1223,12 +1223,12 @@ git checkout main
 git checkout -b hotfix/critical-bug
 
 # Fix and test
-git commit -m "Fix critical bug"
+git commit -m 'Fix critical bug'
 
 # Merge to main
 git checkout main
 git merge --no-ff hotfix/critical-bug
-git tag -a v1.0.1 -m "Hotfix 1.0.1"
+git tag -a v1.0.1 -m 'Hotfix 1.0.1'
 
 # Merge to develop
 git checkout develop
@@ -1247,10 +1247,10 @@ git push origin main --tags
 
 **Driver's setup:**
 \`\`\`bash
-git config user.name "Dev1 and Dev2"
-git commit -m "Feature X
+git config user.name 'Dev1 and Dev2'
+git commit -m 'Feature X
 
-Co-authored-by: Dev2 <dev2@email.com>"
+Co-authored-by: Dev2 <dev2@email.com>'
 \`\`\`
 
 ## Scenario 6: Handling Diverged Branches
@@ -1260,7 +1260,7 @@ Co-authored-by: Dev2 <dev2@email.com>"
 \`\`\`bash
 # Check status
 git status
-# "Your branch and 'origin/feature' have diverged"
+# 'Your branch and 'origin/feature' have diverged'
 
 # Option 1: Rebase your changes
 git pull --rebase origin feature
@@ -1282,7 +1282,7 @@ git pull origin feature/shared
 
 # Make small, frequent commits
 git add .
-git commit -m "Small change"
+git commit -m 'Small change'
 git pull --rebase origin feature/shared
 git push origin feature/shared
 \`\`\`
@@ -1301,7 +1301,7 @@ if (featureFlags.newFeature) {
 \`\`\`
 
 \`\`\`bash
-git commit -m "Add new feature behind feature flag"
+git commit -m 'Add new feature behind feature flag'
 git push origin main  # Safe to merge
 \`\`\`
 
@@ -1312,14 +1312,14 @@ git push origin main  # Safe to merge
 \`\`\`bash
 # Format: <type>(<scope>): <subject>
 
-git commit -m "feat(auth): add OAuth2 login"
-git commit -m "fix(api): resolve timeout issue"
-git commit -m "docs(readme): update installation steps"
-git commit -m "style(button): improve hover effect"
-git commit -m "refactor(database): optimize queries"
-git commit -m "test(login): add integration tests"
-git commit -m "chore(deps): update dependencies"
-git commit -m "perf(images): implement lazy loading"
+git commit -m 'feat(auth): add OAuth2 login'
+git commit -m 'fix(api): resolve timeout issue'
+git commit -m 'docs(readme): update installation steps'
+git commit -m 'style(button): improve hover effect'
+git commit -m 'refactor(database): optimize queries'
+git commit -m 'test(login): add integration tests'
+git commit -m 'chore(deps): update dependencies'
+git commit -m 'perf(images): implement lazy loading'
 \`\`\`
 
 ## Scenario 10: Daily Standup Workflow
@@ -1328,7 +1328,7 @@ git commit -m "perf(images): implement lazy loading"
 
 \`\`\`bash
 # What you did yesterday
-git log --oneline --author="Your Name" --since="yesterday"
+git log --oneline --author='Your Name' --since='yesterday'
 
 # What you're working on
 git branch --show-current
@@ -1342,7 +1342,7 @@ git status --short
       icon: Terminal,
       content: `# Git Troubleshooting Guide
 
-## Problem 1: "Permission Denied (publickey)"
+## Problem 1: 'Permission Denied (publickey)'
 
 **Symptoms:** Can't push/pull from remote
 
@@ -1353,7 +1353,7 @@ git status --short
 ssh -T git@github.com
 
 # Generate new SSH key
-ssh-keygen -t ed25519 -C "your_email@example.com"
+ssh-keygen -t ed25519 -C 'your_email@example.com'
 
 # Start SSH agent
 eval "$(ssh-agent -s)"
@@ -1363,7 +1363,7 @@ ssh-add ~/.ssh/id_ed25519
 cat ~/.ssh/id_ed25519.pub
 \`\`\`
 
-## Problem 2: "Fatal: Not a Git Repository"
+## Problem 2: 'Fatal: Not a Git Repository'
 
 **Symptoms:** Git commands don't work
 
@@ -1381,7 +1381,7 @@ cd /path/to/project
 git clone https://github.com/user/repo.git
 \`\`\`
 
-## Problem 3: "Your Branch is Behind"
+## Problem 3: 'Your Branch is Behind'
 
 **Symptoms:** Can't push, need to pull first
 
@@ -1398,7 +1398,7 @@ git pull --rebase origin main
 git push --force-with-lease origin main
 \`\`\`
 
-## Problem 4: "Merge Conflict"
+## Problem 4: 'Merge Conflict'
 
 **Symptoms:** Conflicts after merge/pull
 
@@ -1421,7 +1421,7 @@ git commit
 git merge --abort
 \`\`\`
 
-## Problem 5: "Detached HEAD"
+## Problem 5: 'Detached HEAD'
 
 **Symptoms:** Not on any branch
 
@@ -1444,15 +1444,15 @@ git checkout main
 \`\`\`bash
 # Use Git LFS
 git lfs install
-git lfs track "*.zip"
+git lfs track '*.zip'
 git add .gitattributes
-git commit -m "Configure Git LFS"
+git commit -m 'Configure Git LFS'
 
 # Or remove file from history
 git filter-branch --tree-filter 'rm -f large-file.zip' HEAD
 \`\`\`
 
-## Problem 7: "Updates Were Rejected"
+## Problem 7: 'Updates Were Rejected'
 
 **Symptoms:** Push rejected, non-fast-forward
 
@@ -1486,7 +1486,7 @@ git stash pop
 
 # Or commit changes
 git add .
-git commit -m "WIP"
+git commit -m 'WIP'
 \`\`\`
 
 ## Problem 9: Wrong Author on Commits
@@ -1497,16 +1497,16 @@ git commit -m "WIP"
 
 \`\`\`bash
 # Fix for next commits
-git config user.name "Correct Name"
-git config user.email "correct@email.com"
+git config user.name 'Correct Name'
+git config user.email 'correct@email.com'
 
 # Amend last commit
-git commit --amend --author="Name <email@example.com>" --no-edit
+git commit --amend --author='Name <email@example.com>' --no-edit
 
 # Fix multiple commits
 git rebase -i HEAD~3
 # Mark commits as 'edit'
-git commit --amend --author="Name <email@example.com>" --no-edit
+git commit --amend --author='Name <email@example.com>' --no-edit
 git rebase --continue
 \`\`\`
 
@@ -1528,7 +1528,7 @@ du -sh .git
 git clone --depth 1 url
 \`\`\`
 
-## Problem 11: ".gitignore Not Working"
+## Problem 11: '.gitignore Not Working'
 
 **Symptoms:** Ignored files still tracked
 
@@ -1538,11 +1538,11 @@ git clone --depth 1 url
 # Remove from Git cache
 git rm -r --cached .
 git add .
-git commit -m "Fix .gitignore"
+git commit -m 'Fix .gitignore'
 
 # For specific file
 git rm --cached file.txt
-git commit -m "Stop tracking file.txt"
+git commit -m 'Stop tracking file.txt'
 \`\`\`
 
 ## Problem 12: Lost Commits
@@ -1579,12 +1579,12 @@ git config --global core.autocrlf input
 
 # Normalize repository
 git add --renormalize .
-git commit -m "Normalize line endings"
+git commit -m 'Normalize line endings'
 \`\`\`
 
 ## Problem 14: Can't Delete Branch
 
-**Symptoms:** "Branch not fully merged"
+**Symptoms:** 'Branch not fully merged'
 
 **Solutions:**
 
@@ -1634,11 +1634,11 @@ git config --global credential.helper store
 
 \`\`\`bash
 # Good
-git commit -m "Add user login validation"
+git commit -m 'Add user login validation'
 
 # Bad
-git commit -m "fixes"
-git commit -m "updated stuff"
+git commit -m 'fixes'
+git commit -m 'updated stuff'
 \`\`\`
 
 ## Branch Naming Conventions
@@ -1776,9 +1776,9 @@ project/
 │   ├── workflows/      # CI/CD
 │   ├── ISSUE_TEMPLATE/
 │   └── pull_request_template.md
-├── docs/              # Documentation
-├── src/               # Source code
-├── tests/             # Test files
+├── docs/               # Documentation
+├── src/                # Source code
+├── tests/              # Test files
 ├── .gitignore
 ├── README.md
 ├── CONTRIBUTING.md
@@ -1902,22 +1902,22 @@ git push backup --tags
 - Skip code review
 - Leave branches open indefinitely`
     }
-  };
+  }), []);
 
   const filteredDocs = useMemo(() => {
-  if (!searchQuery) return documentation;
-  
-  const filtered = {};
-  Object.entries(documentation).forEach(([key, value]) => {
-    if (
-      value.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      value.content.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      filtered[key] = value;
-    }
-  });
-  return filtered;
-}, [searchQuery, documentation]);
+    if (!searchQuery) return documentation;
+    
+    const filtered = {};
+    Object.entries(documentation).forEach(([key, value]) => {
+      if (
+        value.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        value.content.toLowerCase().includes(searchQuery.toLowerCase())
+      ) {
+        filtered[key] = value;
+      }
+    });
+    return filtered;
+  }, [searchQuery, documentation]);
 
   const renderMarkdown = (content) => {
     const lines = content.split('\n');
@@ -1985,9 +1985,9 @@ git push backup --tags
               processedLine.push(<strong key={key++}>{remainingLine.slice(boldIndex + 2, endBold)}</strong>);
               remainingLine = remainingLine.slice(endBold + 2);
             } else {
-              remainingLine = remainingLine.slice(boldIndex + 2);
+              processedLine.push(remainingLine.slice(boldIndex + 2));
             }
-          } else {
+          } else if (codeIndex !== -1) {
             if (codeIndex > 0) {
               processedLine.push(remainingLine.slice(0, codeIndex));
             }
@@ -2000,7 +2000,7 @@ git push backup --tags
               );
               remainingLine = remainingLine.slice(endCode + 1);
             } else {
-              remainingLine = remainingLine.slice(codeIndex + 1);
+              processedLine.push(remainingLine.slice(codeIndex + 1));
             }
           }
         }
@@ -2104,7 +2104,7 @@ git push backup --tags
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                 <Search size={56} className="mx-auto text-gray-300 mb-4" />
                 <h3 className="text-2xl font-semibold text-gray-700 mb-2">No results found</h3>
-                <p className="text-gray-500">Try searching for different keywords like "merge", "branch", "conflict"</p>
+                <p className="text-gray-500">Try searching for different keywords like 'merge', 'branch', 'conflict'</p>
               </div>
             )}
           </div>
@@ -2115,8 +2115,8 @@ git push backup --tags
           <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
             <p>&copy; 2024 Git Scenarios Documentation. All scenarios tested and verified.</p>
             <div className="flex gap-6">
-              <a href="https://git-scm.com/doc" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Official Git Docs</a>
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">GitHub</a>
+              <a href="[https://git-scm.com/doc](https://git-scm.com/doc)" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Official Git Docs</a>
+              <a href="[https://github.com](https://github.com)" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">GitHub</a>
               <a href="#" className="hover:text-blue-600 transition-colors">Report Issue</a>
             </div>
           </div>
