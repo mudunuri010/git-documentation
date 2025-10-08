@@ -1905,19 +1905,19 @@ git push backup --tags
   };
 
   const filteredDocs = useMemo(() => {
-    if (!searchQuery) return documentation;
-    
-    const filtered = {};
-    Object.entries(documentation).forEach(([key, value]) => {
-      if (
-        value.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        value.content.toLowerCase().includes(searchQuery.toLowerCase())
-      ) {
-        filtered[key] = value;
-      }
-    });
-    return filtered;
-  }, [searchQuery]);
+  if (!searchQuery) return documentation;
+  
+  const filtered = {};
+  Object.entries(documentation).forEach(([key, value]) => {
+    if (
+      value.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      value.content.toLowerCase().includes(searchQuery.toLowerCase())
+    ) {
+      filtered[key] = value;
+    }
+  });
+  return filtered;
+}, [searchQuery, documentation]);
 
   const renderMarkdown = (content) => {
     const lines = content.split('\n');
@@ -2113,7 +2113,7 @@ git push backup --tags
         {/* Footer */}
         <footer className="bg-white border-t border-gray-200 px-6 py-4">
           <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
-            <p>© 2024 Git Scenarios Documentation. All scenarios tested and verified.</p>
+            <p>&copy; 2024 Git Scenarios Documentation. All scenarios tested and verified.</p>
             <div className="flex gap-6">
               <a href="https://git-scm.com/doc" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Official Git Docs</a>
               <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">GitHub</a>
