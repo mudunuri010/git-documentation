@@ -1917,7 +1917,7 @@ git push backup --tags
       }
     });
     return filtered;
-  }, [searchQuery, documentation]);
+  }, [searchQuery]);
 
   const renderMarkdown = (content) => {
     const lines = content.split('\n');
@@ -1986,6 +1986,7 @@ git push backup --tags
               remainingLine = remainingLine.slice(endBold + 2);
             } else {
               processedLine.push(remainingLine.slice(boldIndex + 2));
+              break;
             }
           } else if (codeIndex !== -1) {
             if (codeIndex > 0) {
@@ -2001,6 +2002,7 @@ git push backup --tags
               remainingLine = remainingLine.slice(endCode + 1);
             } else {
               processedLine.push(remainingLine.slice(codeIndex + 1));
+              break;
             }
           }
         }
@@ -2104,7 +2106,7 @@ git push backup --tags
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                 <Search size={56} className="mx-auto text-gray-300 mb-4" />
                 <h3 className="text-2xl font-semibold text-gray-700 mb-2">No results found</h3>
-                <p className="text-gray-500">Try searching for different keywords like 'merge', 'branch', 'conflict'</p>
+                <p className="text-gray-500">Try searching for different keywords like &apos;merge&apos;, &apos;branch&apos;, &apos;conflict&apos;</p>
               </div>
             )}
           </div>
@@ -2115,8 +2117,8 @@ git push backup --tags
           <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
             <p>&copy; 2024 Git Scenarios Documentation. All scenarios tested and verified.</p>
             <div className="flex gap-6">
-              <a href="[https://git-scm.com/doc](https://git-scm.com/doc)" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Official Git Docs</a>
-              <a href="[https://github.com](https://github.com)" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">GitHub</a>
+              <a href="https://git-scm.com/doc" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Official Git Docs</a>
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">GitHub</a>
               <a href="#" className="hover:text-blue-600 transition-colors">Report Issue</a>
             </div>
           </div>
