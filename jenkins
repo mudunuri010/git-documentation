@@ -27,6 +27,14 @@ pipeline {
         }
     }
 }
+post{
+  success{
+    bat 'echo  Build Successfully'
+}
+failure{
+    bat 'echo Build Unsuccessfully'
+   }
+}
 
    
 
