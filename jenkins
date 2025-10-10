@@ -5,7 +5,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building the Application'
-                sh "npm run dev"
+                bat "npm run dev"
             }
         }
         stage('Test'){
