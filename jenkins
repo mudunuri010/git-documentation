@@ -1,35 +1,32 @@
 pipeline {
     agent any
+
     stages {
-
-        stage('Checkout') {
+        stage("Checkout Code") {
             steps {
-                echo 'Checking out from Git repository'
-                
+                git url: 'https://github.com/mudunuri010/git-documentation.git'
             }
         }
 
-        stage('Build') {
+        stage("Build") {
             steps {
-                echo 'Installing dependencies and building the application'
-                
+                bat 'echo Building the app'
             }
         }
 
-        stage('Test') {
+        stage("Test") {
             steps {
-                echo 'Running tests'
-                // bat 'npx jest'  // optional if you have tests
+                bat 'echo Testing the app'
             }
         }
 
-        stage('Deploy') {
+        stage("Deploy") {
             steps {
-                echo 'Deploying the application'
-                // Add deploy commands here
+                bat 'echo Deploying the app'
             }
         }
     }
+}
 
    
 
