@@ -5,15 +5,14 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checking out from Git repository'
-                git branch: 'master', url: 'https://github.com/mudunuri010/git-documentation.git'
+                
             }
         }
 
         stage('Build') {
             steps {
                 echo 'Installing dependencies and building the application'
-                bat 'npm install'
-                bat 'npx next dev'  // run Next.js locally via npx
+                
             }
         }
 
@@ -32,13 +31,5 @@ pipeline {
         }
     }
 
-    post {
-        success {
-            echo 'Pipeline completed successfully!'
-        }
-        failure {
-            echo 'Pipeline failed. Check logs for errors.'
-        }
-    }
-}
+   
 
