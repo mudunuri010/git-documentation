@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         IMAGE_NAME = "saimudunuri09/git-documentation"
-        IMAGE_TAG  = "${env.BUILD_NUMBER}" // optional: use Jenkins build number
+        IMAGE_TAG  = "${env.BUILD_NUMBER}"  // Optional: use Jenkins build number
     }
     stages {
         stage('Checkout') {
@@ -13,22 +13,23 @@ pipeline {
 
         stage('Build') {
             steps {
-                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+                sh "docker build -t $IMAGE_NAME:$IMAGE_TAG ."
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'docker',
+                    credentialsId: 'docker',  // Your Jenkins DockerHub credentials ID
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat 'docker login -u %DOCKER_USER% -p %DOCKER_PASS%'
-                    bat 'docker push %IMAGE_NAME%:%IMAGE_TAG%'
+                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
+                    sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
                 }
             }
         }
     }
 }
+
 
