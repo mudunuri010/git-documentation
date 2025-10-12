@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        IMAGE_NAME = "saimudunuri09/git-documentation"
+        IMAGE_NAME = "saimudunuri9/git-documentation"
         IMAGE_TAG  = "${env.BUILD_NUMBER}"  // Optional: use Jenkins build number
     }
     stages {
