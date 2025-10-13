@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         AWS_REGION = 'us-east-1'
-        AWS_ACCOUNT_ID = '025765678699'  // Your AWS Account ID
+        AWS_ACCOUNT_ID = '025765678699'
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         ECR_REPO = 'test'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
@@ -27,13 +27,11 @@ pipeline {
             steps {
                 withAWS(credentials: 'aws_cred', region: "${AWS_REGION}") {
                     sh '''
+                        # AWS CLI will be available from the plugin
                         aws ecr get-login-password --region ${AWS_REGION} | \
                         docker login --username AWS --password-stdin ${ECR_REGISTRY}
                         
-                        aws ecr describe-repositories --repository-names ${test} || \
-                        aws ecr create-repository --repository-name ${test}
-                        
-                        docker push ${ECR_REGISTRY}/${test}:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}
                     '''
                 }
             }
@@ -44,6 +42,8 @@ pipeline {
         success {
             echo "✅ Image pushed: ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
         }
+        failure {
+            echo "❌ Pipeline failed"
+        }
     }
 }
-
