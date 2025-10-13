@@ -18,27 +18,26 @@ pipeline {
             steps {
                 script {
                     // Stop and remove existing container if it exists
-                    bat """
-                    docker ps -a -q -f name=%CONTAINER_NAME% > temp.txt
-                    set /p CONTAINER_ID=<temp.txt
-                    if not "%CONTAINER_ID%"=="" (
-                        docker stop %CONTAINER_ID%
-                        docker rm %CONTAINER_ID%
-                    )
-                    del temp.txt
+                    sh """
+                    CONTAINER_ID=\$(docker ps -a -q -f name=${CONTAINER_NAME})
+                    if [ ! -z "\$CONTAINER_ID" ]; then
+                        docker stop \$CONTAINER_ID
+                        docker rm \$CONTAINER_ID
+                    fi
                     """
 
                     // Run the container locally from the pulled image
-                    bat "docker run -d -p %PORT%:3000 --name %CONTAINER_NAME% %IMAGE_NAME%:4"
+                    sh "docker run -d -p ${PORT}:3000 --name ${CONTAINER_NAME} ${IMAGE_NAME}:4"
                 }
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                bat "docker ps"
+                sh "docker ps"
             }
         }
     }
 }
+
 
