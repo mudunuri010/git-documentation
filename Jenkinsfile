@@ -2,11 +2,12 @@ pipeline {
     agent any
     
     parameters {
+        // Environment selection (DROPDOWN)
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Select deployment environment')
+        
         // Image and container parameters
-        string(name: 'IMAGE_NAME', defaultValue: 'saimudunuri9/git-documentation', description: 'Docker image name')
+        string(name: 'IMAGE_NAME', defaultValue: 'saimudunuri9/git-documentation', description: 'Docker image name (local only)')
         string(name: 'IMAGE_TAG', defaultValue: '4', description: 'Docker image tag/version')
-        string(name: 'CONTAINER_NAME', defaultValue: 'git-doc', description: 'Container name')
-        string(name: 'PORT', defaultValue: '3000', description: 'Host port to expose')
         
         // Git parameters
         string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Git branch to checkout')
