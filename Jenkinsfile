@@ -1,21 +1,25 @@
 pipeline {
     agent any
     
-    parameters {
-        // Environment selection (DROPDOWN)
-        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Select deployment environment')
-        
-        // Image and container parameters
-        string(name: 'IMAGE_NAME', defaultValue: 'saimudunuri9/git-documentation', description: 'Docker image name (local only)')
-        string(name: 'IMAGE_TAG', defaultValue: '4', description: 'Docker image tag/version')
-        
-        // Git parameters
-        string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Git branch to checkout')
-        string(name: 'GIT_URL', defaultValue: 'https://github.com/mudunuri010/git-documentation', description: 'Git repository URL')
-        
-        // Optional: Control deployment behavior
-        booleanParam(name: 'FORCE_REMOVE', defaultValue: true, description: 'Force remove existing container?')
-    }
+   parameters {
+    // Environment selection (DROPDOWN)
+    choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Select deployment environment')
+    
+    // Image and container parameters
+    string(name: 'IMAGE_NAME', defaultValue: 'saimudunuri9/git-documentation', description: 'Docker image name (local only)')
+    string(name: 'IMAGE_TAG', defaultValue: '4', description: 'Docker image tag/version')
+    
+    // ✅ ADD THESE TWO PARAMETERS:
+    string(name: 'CONTAINER_NAME', defaultValue: 'git-docs-container', description: 'Docker container name')
+    string(name: 'PORT', defaultValue: '8080', description: 'Host port to expose')
+    
+    // Git parameters
+    string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Git branch to checkout')
+    string(name: 'GIT_URL', defaultValue: 'https://github.com/mudunuri010/git-documentation', description: 'Git repository URL')
+    
+    // Optional: Control deployment behavior
+    booleanParam(name: 'FORCE_REMOVE', defaultValue: true, description: 'Force remove existing container?')
+}
     
     environment {
         IMAGE_NAME = "${params.IMAGE_NAME}"
