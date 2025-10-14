@@ -46,14 +46,21 @@ pipeline {
             }
         }
         
-        stage('Deploy Locally') {
-            steps {
-                script {
-                    if (params.FORCE_REMOVE) {
-                        sh "docker rm -f ${params.CONTAINER_NAME} || true"
-                    }
-                }
-                sh "docker run -d -p ${params.PORT}:3000 --name ${params.CONTAINER_NAME} ${params.IMAGE_NAME}:${params.IMAGE_TAG}"
+       stage('Deploy Locally') {
+    steps {
+        script {
+            // Use ENVIRONMENT to determine deployment logic
+            if (params.ENVIRONMENT == 'dev') {
+                echo "Deploying to DEV environment..."
+                sh "docker run -d -p 8080:3000 --name dev-container ${params.IMAGE_NAME}:${params.IMAGE_TAG}"
+            } 
+            else if (params.ENVIRONMENT == 'staging') {
+                echo "Deploying to STAGING environment..."
+                sh "docker run -d -p 8081:3000 --name staging-container ${params.IMAGE_NAME}:${params.IMAGE_TAG}"
+            }
+            else if (params.ENVIRONMENT == 'prod') {
+                echo "Deploying to PRODUCTION environment..."
+                sh "docker run -d -p 80:3000 --name prod-container ${params.IMAGE_NAME}:${params.IMAGE_TAG}"
             }
         }
         
