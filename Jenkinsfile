@@ -63,6 +63,9 @@ pipeline {
                 sh "docker run -d -p 80:3000 --name prod-container ${params.IMAGE_NAME}:${params.IMAGE_TAG}"
             }
         }
+    }
+      
+       }
         
         stage('Verify Deployment') {
             steps {
