@@ -56,7 +56,7 @@ pipeline {
             } 
             else if (params.ENVIRONMENT == 'staging') {
                 echo "Deploying to STAGING environment..."
-                sh "docker run -d -p 8081:3000 --name staging-container ${params.IMAGE_NAME}:${params.IMAGE_TAG}"
+                sh "docker run -d -p 8082:3000 --name staging-container ${params.IMAGE_NAME}:${params.IMAGE_TAG}"
             }
             else if (params.ENVIRONMENT == 'prod') {
                 echo "Deploying to PRODUCTION environment..."
