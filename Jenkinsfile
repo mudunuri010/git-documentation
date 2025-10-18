@@ -1,5 +1,3 @@
-@Library('shared-library') _
-
 properties([
     parameters([
         choice(
