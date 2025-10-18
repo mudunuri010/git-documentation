@@ -9,17 +9,36 @@ properties([
          referencedParameters: 'ENVIRONMENT',
          script: [
              $class: 'GroovyScript',
-             fallbackScript: [classpath: [], sandbox: true, script: 'return ["No servers available"]'],
+             fallbackScript: [classpath: [], sandbox: true, script: 'return ["FALLBACK-CHECK-LOGS"]'],
              script: [classpath: [], sandbox: true, script: '''
-                 def env = ENVIRONMENT ?: "dev"
-                 def command = ["/var/jenkins_home/scripts/get_servers.sh", env]
-                 def process = command.execute()
-                 process.waitFor()
-                 def output = process.in.text.trim()
-                 if (process.exitValue() == 0 && output) {
-                     return output.split(/\n/) as List
-                 } else {
-                     return ["Error fetching servers"]
+                 try {
+                     def env = ENVIRONMENT ?: "dev"
+                     def command = ["/var/jenkins_home/scripts/get_servers.sh", env]
+                     def process = command.execute()
+                     process.waitFor()
+                     
+                     def output = process.in.text.trim()
+                     def errors = process.err.text.trim()
+                     def exitCode = process.exitValue()
+                     
+                     if (exitCode != 0) {
+                         return ["ERR-ExitCode-" + exitCode]
+                     }
+                     
+                     if (!output || output.isEmpty()) {
+                         return ["ERR-NoOutput"]
+                     }
+                     
+                     def servers = output.split(/\n/) as List
+                     
+                     if (!servers || servers.isEmpty()) {
+                         return ["ERR-EmptyList"]
+                     }
+                     
+                     return servers
+                     
+                 } catch (Exception e) {
+                     return ["EXCEPTION-" + e.class.simpleName]
                  }
              ''']
          ]
@@ -34,15 +53,24 @@ properties([
              $class: 'GroovyScript',
              fallbackScript: [classpath: [], sandbox: true, script: 'return ["default-container"]'],
              script: [classpath: [], sandbox: true, script: '''
-                 if (!SERVER) { return ["default-container"] }
-                 def command = ["/var/jenkins_home/scripts/generate_container_name.sh", SERVER]
-                 def process = command.execute()
-                 process.waitFor()
-                 def output = process.in.text.trim()
-                 if (process.exitValue() == 0 && output) {
-                     return [output]
-                 } else {
-                     return ["error-container"]
+                 try {
+                     if (!SERVER || SERVER.startsWith("ERR-") || SERVER.startsWith("EXCEPTION-")) {
+                         return ["error-container"]
+                     }
+                     
+                     def command = ["/var/jenkins_home/scripts/generate_container_name.sh", SERVER]
+                     def process = command.execute()
+                     process.waitFor()
+
+                     def output = process.in.text.trim()
+
+                     if (process.exitValue() == 0 && output) {
+                         return [output]
+                     } else {
+                         return ["error-container"]
+                     }
+                 } catch (Exception e) {
+                     return ["exception-container"]
                  }
              ''']
          ]
