@@ -1,9 +1,7 @@
 properties([
     parameters([
-        // Static dropdown for environment
         choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Select deployment environment'),
 
-        // Active Choice: SERVER calls get_servers.bat
         [$class: 'CascadeChoiceParameter',
          choiceType: 'PT_SINGLE_SELECT',
          description: 'Select the server dynamically from script',
@@ -14,16 +12,12 @@ properties([
              fallbackScript: [classpath: [], sandbox: true, script: 'return ["No servers available"]'],
              script: [classpath: [], sandbox: true, script: '''
                  def env = ENVIRONMENT ?: "dev"
-                 // Execute the Windows Batch script
-                 def command = "cmd /c C:\\apps\\scripts\\get_servers.bat ${env}"
+                 def command = ["/var/jenkins_home/scripts/get_servers.sh", env]
                  def process = command.execute()
                  process.waitFor()
-                 
                  def output = process.in.text.trim()
-                 
                  if (process.exitValue() == 0 && output) {
-                     // Split by Windows newlines (\r\n) or just \n for robustness
-                     return output.split(/\\r?\\n/) as List
+                     return output.split(/\n/) as List
                  } else {
                      return ["Error fetching servers"]
                  }
@@ -31,7 +25,6 @@ properties([
          ]
         ],
 
-        // Active Choice: CONTAINER_NAME calls generate_container_name.bat
         [$class: 'CascadeChoiceParameter',
          choiceType: 'PT_SINGLE_SELECT',
          description: 'Auto-generate container name from script',
@@ -42,14 +35,10 @@ properties([
              fallbackScript: [classpath: [], sandbox: true, script: 'return ["default-container"]'],
              script: [classpath: [], sandbox: true, script: '''
                  if (!SERVER) { return ["default-container"] }
-                 
-                 // Execute the Windows Batch script
-                 def command = "cmd /c C:\\apps\\scripts\\generate_container_name.bat ${SERVER}"
+                 def command = ["/var/jenkins_home/scripts/generate_container_name.sh", SERVER]
                  def process = command.execute()
                  process.waitFor()
-
                  def output = process.in.text.trim()
-
                  if (process.exitValue() == 0 && output) {
                      return [output]
                  } else {
@@ -59,7 +48,6 @@ properties([
          ]
         ],
         
-        // Static parameters remain the same
         string(name: 'IMAGE_NAME', defaultValue: 'saimudunuri9/git-documentation', description: 'Docker image name'),
         string(name: 'IMAGE_TAG', defaultValue: '4', description: 'Docker image tag/version'),
         string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Git branch to checkout'),
@@ -69,7 +57,6 @@ properties([
 ])
 
 pipeline {
-    // Ensure this agent is a Windows node
     agent any
 
     environment {
@@ -105,26 +92,23 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image ${IMAGE_NAME}:${IMAGE_TAG}..."
-                // Use the 'bat' step for Windows commands
-                bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
         stage('Deploy Container') {
             steps {
                 script {
-                    // Call get_port.bat to get the port
-                    def hostPort = bat(script: "C:\\apps\\scripts\\get_port.bat ${ENV}", returnStdout: true).trim()
+                    def hostPort = sh(script: "/var/jenkins_home/scripts/get_port.sh ${ENV}", returnStdout: true).trim()
                     echo "Using port '${hostPort}' for environment '${ENV}'"
 
                     if (params.FORCE_REMOVE) {
                         echo "Attempting to remove existing container..."
-                        // Use '|| exit 0' for non-fatal errors in Windows
-                        bat "docker rm -f ${CONTAINER_NAME} || exit 0"
+                        sh "docker rm -f ${CONTAINER_NAME} || true"
                     }
 
                     echo "Deploying container ${CONTAINER_NAME} on ${TARGET_SERVER}..."
-                    bat "docker run -d -p ${hostPort}:3000 --name ${CONTAINER_NAME} ${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker run -d -p ${hostPort}:3000 --name ${CONTAINER_NAME} ${IMAGE_NAME}:${IMAGE_TAG}"
 
                     env.DEPLOYED_PORT = hostPort
                 }
@@ -134,7 +118,7 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 echo "Verifying active containers..."
-                bat "docker ps"
+                sh "docker ps"
                 echo "Container ${CONTAINER_NAME} should be running and accessible on port ${env.DEPLOYED_PORT}"
             }
         }
@@ -143,7 +127,7 @@ pipeline {
     post {
         success {
             echo "✅ Deployment successful!"
-            echo "🌍 Access your application at: http://<your-server-ip>:${env.DEPLOYED_PORT}"
+            echo "🌍 Access your application at: http://localhost:${env.DEPLOYED_PORT}"
         }
         failure {
             echo "❌ Deployment failed. Please review the console output for errors."
