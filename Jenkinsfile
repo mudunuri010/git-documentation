@@ -9,8 +9,8 @@ properties([
          referencedParameters: 'ENVIRONMENT',
          script: [
              $class: 'GroovyScript',
-             fallbackScript: [classpath: [], sandbox: true, script: 'return ["FALLBACK-CHECK-LOGS"]'],
-             script: [classpath: [], sandbox: true, script: '''
+             fallbackScript: [classpath: [], sandbox: false, script: 'return ["FALLBACK-CHECK-LOGS"]'],
+             script: [classpath: [], sandbox: false, script: '''
                  try {
                      def env = ENVIRONMENT ?: "dev"
                      def command = ["/var/jenkins_home/scripts/get_servers.sh", env]
@@ -51,8 +51,8 @@ properties([
          referencedParameters: 'SERVER',
          script: [
              $class: 'GroovyScript',
-             fallbackScript: [classpath: [], sandbox: true, script: 'return ["default-container"]'],
-             script: [classpath: [], sandbox: true, script: '''
+             fallbackScript: [classpath: [], sandbox: false, script: 'return ["default-container"]'],
+             script: [classpath: [], sandbox: false, script: '''
                  try {
                      if (!SERVER || SERVER.startsWith("ERR-") || SERVER.startsWith("EXCEPTION-")) {
                          return ["error-container"]
