@@ -103,7 +103,7 @@ pipeline {
                 echo "Deploying with the following configuration:"
                 echo "------------------------------------------"
                 echo "Environment:     ${ENV}"
-                echo "Target Server:   ${TARGET_SERVER}"
+                echo "Target Server:   ${params.SERVER}"
                 echo "Container Name:  ${CONTAINER_NAME}"
                 echo "Image:           ${IMAGE_NAME}:${IMAGE_TAG}"
                 echo "Git Branch:      ${GIT_BRANCH}"
