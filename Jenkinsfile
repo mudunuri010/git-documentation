@@ -1,38 +1,197 @@
+properties([
+    parameters([
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'staging', 'prod'],
+            description: 'Select deployment environment'
+        ),
+        [$class: 'CascadeChoiceParameter',
+            choiceType: 'PT_SINGLE_SELECT',
+            description: 'Select the server dynamically from script',
+            name: 'SERVER',
+            referencedParameters: 'ENVIRONMENT',
+            script: [
+                $class: 'GroovyScript',
+                fallbackScript: [
+                    classpath: [],
+                    sandbox: false,
+                    script: 'return ["FALLBACK-CHECK-LOGS"]'
+                ],
+                script: [
+                    classpath: [],
+                    sandbox: false,
+                    script: '''
+                        try {
+                            def env = ENVIRONMENT ?: "dev"
+                            def command = ["/var/jenkins_home/scripts/get_servers.sh", env]
+                            def process = command.execute()
+                            process.waitFor()
+                            
+                            def output = process.in.text.trim()
+                            def exitCode = process.exitValue()
+                            
+                            if (exitCode != 0) {
+                                return ["ERR-ExitCode-" + exitCode]
+                            }
+                            
+                            if (!output || output.isEmpty()) {
+                                return ["ERR-NoOutput"]
+                            }
+                            
+                            def servers = output.split(/\n/) as List
+                            
+                            if (!servers || servers.isEmpty()) {
+                                return ["ERR-EmptyList"]
+                            }
+                            
+                            return servers
+                            
+                        } catch (Exception e) {
+                            return ["EXCEPTION-" + e.class.simpleName]
+                        }
+                    '''
+                ]
+            ]
+        ],
+        [$class: 'CascadeChoiceParameter',
+            choiceType: 'PT_SINGLE_SELECT',
+            description: 'Auto-generate container name from script',
+            name: 'CONTAINER_NAME',
+            referencedParameters: 'SERVER',
+            script: [
+                $class: 'GroovyScript',
+                fallbackScript: [
+                    classpath: [],
+                    sandbox: false,
+                    script: 'return ["default-container"]'
+                ],
+                script: [
+                    classpath: [],
+                    sandbox: false,
+                    script: '''
+                        try {
+                            if (!SERVER || SERVER.startsWith("ERR-") || SERVER.startsWith("EXCEPTION-")) {
+                                return ["error-container"]
+                            }
+                            
+                            def command = ["/var/jenkins_home/scripts/generate_container_name.sh", SERVER]
+                            def process = command.execute()
+                            process.waitFor()
+
+                            def output = process.in.text.trim()
+
+                            if (process.exitValue() == 0 && output) {
+                                return [output]
+                            } else {
+                                return ["error-container"]
+                            }
+                        } catch (Exception e) {
+                            return ["exception-container"]
+                        }
+                    '''
+                ]
+            ]
+        ],
+        string(
+            name: 'IMAGE_NAME',
+            defaultValue: 'saimudunuri9/git-documentation',
+            description: 'Docker image name'
+        ),
+        string(
+            name: 'IMAGE_TAG',
+            defaultValue: '4',
+            description: 'Docker image tag/version'
+        ),
+        string(
+            name: 'GIT_BRANCH',
+            defaultValue: 'master',
+            description: 'Git branch to checkout'
+        ),
+        string(
+            name: 'GIT_URL',
+            defaultValue: 'https://github.com/mudunuri010/git-documentation',
+            description: 'Git repository URL'
+        ),
+        booleanParam(
+            name: 'FORCE_REMOVE',
+            defaultValue: true,
+            description: 'Force remove existing container before deploy?'
+        )
+    ])
+])
+
 pipeline {
     agent any
     
-    environment {
-        AWS_REGION = 'us-east-1'
-        AWS_ACCOUNT_ID = '025765678699'
-        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        ECR_REPO = 'test'
-        IMAGE_TAG = "${env.BUILD_NUMBER}"
-    }
-    
     stages {
-        stage('Checkout') {
+        stage('Display Configuration') {
             steps {
-                git branch: 'master', url: 'https://github.com/mudunuri010/git-documentation'
+                script {
+                    echo "Deploying with the following configuration:"
+                    echo "------------------------------------------"
+                    echo "Environment:     ${params.ENVIRONMENT}"
+                    echo "Target Server:   ${params.SERVER}"
+                    echo "Container Name:  ${params.CONTAINER_NAME}"
+                    echo "Image:           ${params.IMAGE_NAME}:${params.IMAGE_TAG}"
+                    echo "Git Branch:      ${params.GIT_BRANCH}"
+                    echo "Force Remove:    ${params.FORCE_REMOVE}"
+                    
+                    // Get port for environment
+                    def portCommand = ["/var/jenkins_home/scripts/get_port.sh", params.ENVIRONMENT]
+                    def portProcess = portCommand.execute()
+                    portProcess.waitFor()
+                    
+                    env.HOST_PORT = portProcess.in.text.trim()
+                    echo "Using port '${env.HOST_PORT}' for environment '${params.ENVIRONMENT}'"
+                    echo "------------------------------------------"
+                }
             }
         }
         
-        stage('Build') {
+        stage('Cleanup') {
+            when {
+                expression { params.FORCE_REMOVE == true }
+            }
             steps {
-                sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} ."
-                sh "docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
+                script {
+                    echo "=== Checking for existing container ==="
+                    sh """
+                        if docker ps -a --format '{{.Names}}' | grep -q '^${params.CONTAINER_NAME}\$'; then
+                            echo "Container ${params.CONTAINER_NAME} exists. Removing..."
+                            docker stop ${params.CONTAINER_NAME} || true
+                            docker rm ${params.CONTAINER_NAME} || true
+                        else
+                            echo "No existing container found."
+                        fi
+                    """
+                }
             }
         }
         
-        stage('Push to ECR') {
+        stage('Deploy Container') {
             steps {
-                withAWS(credentials: 'aws_cred', region: "${AWS_REGION}") {
-                    sh '''
-                        # AWS CLI will be available from the plugin
-                        aws ecr get-login-password --region ${AWS_REGION} | \
-                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                        
-                        docker push ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}
-                    '''
+                script {
+                    echo "=== Deploying Application ==="
+                    sh """
+                        docker run -d \\
+                            --name ${params.CONTAINER_NAME} \\
+                            -p ${env.HOST_PORT}:3000 \\
+                            ${params.IMAGE_NAME}:${params.IMAGE_TAG}
+                    """
+                    
+                    echo "✅ Deployment successful!"
+                    echo "Container: ${params.CONTAINER_NAME}"
+                    echo "Access at: http://localhost:${env.HOST_PORT}"
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo "=== Verifying Deployment ==="
+                    sh "docker ps | grep ${params.CONTAINER_NAME}"
+                    echo "✅ Container is running!"
                 }
             }
         }
@@ -40,10 +199,10 @@ pipeline {
     
     post {
         success {
-            echo "✅ Image pushed: ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
+            echo "🎉 Deployment completed successfully!"
         }
         failure {
-            echo "❌ Pipeline failed"
+            echo "❌ Deployment failed. Please review the console output for errors."
         }
     }
 }
