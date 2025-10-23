@@ -1,0 +1,11 @@
+# Core Pipeline
+workflow-aggregator:latest
+
+# For Dynamic Parameters (CascadeChoiceParameter)
+uno-choice:latest
+
+# For running Docker commands in the pipeline
+docker-workflow:latest
+
+# For JCasC to work
+configuration-as-code:latest

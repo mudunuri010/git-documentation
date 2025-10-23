@@ -1,0 +1,27 @@
+jenkins:
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "admin"
+  
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+security:
+  scriptApproval:
+    approvedSignatures:
+      - "method java.lang.Process waitFor"
+      - "method java.lang.Process exitValue"
+      - "method java.lang.Process getInputStream"
+      - "method java.io.InputStream getText"
+      - "staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods execute java.util.List"
+      - "staticMethod org.codehaus.groovy.runtime.ProcessGroovyMethods execute java.lang.String"
+      - "method java.lang.String trim"
+      - "method java.lang.String split java.lang.String"
+
+unclassified:
+  location:
+    url: "http://localhost:8081/"

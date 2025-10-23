@@ -2,7 +2,8 @@ properties([
     parameters([
         choice(
             name: 'ENVIRONMENT',
-            choices: ['dev', 'staging', 'prod'],
+            // Added 'qa' as requested
+            choices: ['dev', 'qa', 'staging', 'prod'],
             description: 'Select deployment environment'
         ),
         [$class: 'CascadeChoiceParameter',
@@ -14,38 +15,36 @@ properties([
                 $class: 'GroovyScript',
                 fallbackScript: [
                     classpath: [],
-                    sandbox: false,
                     script: 'return ["FALLBACK-CHECK-LOGS"]'
                 ],
                 script: [
                     classpath: [],
-                    sandbox: false,
                     script: '''
                         try {
                             def env = ENVIRONMENT ?: "dev"
                             def command = ["/var/jenkins_home/scripts/get_servers.sh", env]
                             def process = command.execute()
                             process.waitFor()
-                            
+
                             def output = process.in.text.trim()
                             def exitCode = process.exitValue()
-                            
+
                             if (exitCode != 0) {
                                 return ["ERR-ExitCode-" + exitCode]
                             }
-                            
+
                             if (!output || output.isEmpty()) {
                                 return ["ERR-NoOutput"]
                             }
-                            
+
                             def servers = output.split(/\n/) as List
-                            
+
                             if (!servers || servers.isEmpty()) {
                                 return ["ERR-EmptyList"]
                             }
-                            
+
                             return servers
-                            
+
                         } catch (Exception e) {
                             return ["EXCEPTION-" + e.class.simpleName]
                         }
@@ -62,18 +61,16 @@ properties([
                 $class: 'GroovyScript',
                 fallbackScript: [
                     classpath: [],
-                    sandbox: false,
                     script: 'return ["default-container"]'
                 ],
                 script: [
                     classpath: [],
-                    sandbox: false,
                     script: '''
                         try {
                             if (!SERVER || SERVER.startsWith("ERR-") || SERVER.startsWith("EXCEPTION-")) {
                                 return ["error-container"]
                             }
-                            
+
                             def command = ["/var/jenkins_home/scripts/generate_container_name.sh", SERVER]
                             def process = command.execute()
                             process.waitFor()
@@ -122,7 +119,7 @@ properties([
 
 pipeline {
     agent any
-    
+
     stages {
         stage('Display Configuration') {
             steps {
@@ -135,19 +132,19 @@ pipeline {
                     echo "Image:           ${params.IMAGE_NAME}:${params.IMAGE_TAG}"
                     echo "Git Branch:      ${params.GIT_BRANCH}"
                     echo "Force Remove:    ${params.FORCE_REMOVE}"
-                    
+
                     // Get port for environment
                     def portCommand = ["/var/jenkins_home/scripts/get_port.sh", params.ENVIRONMENT]
                     def portProcess = portCommand.execute()
                     portProcess.waitFor()
-                    
+
                     env.HOST_PORT = portProcess.in.text.trim()
                     echo "Using port '${env.HOST_PORT}' for environment '${params.ENVIRONMENT}'"
                     echo "------------------------------------------"
                 }
             }
         }
-        
+
         stage('Cleanup') {
             when {
                 expression { params.FORCE_REMOVE == true }
@@ -167,7 +164,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Deploy Container') {
             steps {
                 script {
@@ -178,14 +175,14 @@ pipeline {
                             -p ${env.HOST_PORT}:3000 \\
                             ${params.IMAGE_NAME}:${params.IMAGE_TAG}
                     """
-                    
+
                     echo "✅ Deployment successful!"
                     echo "Container: ${params.CONTAINER_NAME}"
                     echo "Access at: http://localhost:${env.HOST_PORT}"
                 }
             }
         }
-        
+
         stage('Verify Deployment') {
             steps {
                 script {
@@ -196,7 +193,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         success {
             echo "🎉 Deployment completed successfully!"

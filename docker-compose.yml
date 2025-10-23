@@ -1,0 +1,22 @@
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: jenkins.Dockerfile
+    image: custom-jenkins:lts
+    container_name: jenkins
+    ports:
+      - "8081:8080"  # Jenkins Web UI
+      - "50000:50000" # For Jenkins agents
+    environment:
+      - CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs/jenkins.casc.yml
+      - DOCKER_GID=999
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ./jenkins.casc.yml:/var/jenkins_home/casc_configs/jenkins.casc.yml
+      - ./scripts:/var/jenkins_home/scripts
+      - ./init.groovy.d:/var/jenkins_home/init.groovy.d
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  jenkins_home:
