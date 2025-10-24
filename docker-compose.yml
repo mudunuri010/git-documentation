@@ -1,22 +1,38 @@
+# version: "3.9"
+
 services:
   jenkins:
-    build:
-      context: .
-      dockerfile: jenkins.Dockerfile
-    image: custom-jenkins:lts
+    image: jenkins/jenkins:latest-jdk21
     container_name: jenkins
-    ports:
-      - "8081:8080"  # Jenkins Web UI
-      - "50000:50000" # For Jenkins agents
+    restart: unless-stopped
+    user: root
+    env_file:
+      - .env
     environment:
+      - JENKINS_HOME=/var/jenkins_home
       - CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs/jenkins.casc.yml
-      - DOCKER_GID=999
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - ADMIN_USER=${ADMIN_USER}
+      - ADMIN_PASS=${ADMIN_PASS}
+      - GIT_USERNAME=${GIT_USERNAME}
+      - GIT_PASSWORD=${GIT_PASSWORD}
+    ports:
+      - "8080:8080"
+      - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
       - ./jenkins.casc.yml:/var/jenkins_home/casc_configs/jenkins.casc.yml
-      - ./scripts:/var/jenkins_home/scripts
-      - ./init.groovy.d:/var/jenkins_home/init.groovy.d
+      -  ./scripts:/var/jenkins_home/scripts
+      - ./plugins.txt:/usr/share/jenkins/ref/plugins.txt
       - /var/run/docker.sock:/var/run/docker.sock
+    command: >
+      bash -c "
+        echo '🧩 Installing Jenkins plugins...' &&
+        jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt &&
+        echo '🚀 Starting Jenkins with Java 21 and JCasC...' &&
+        exec /usr/bin/tini -- /usr/local/bin/jenkins.sh
+      "
 
 volumes:
   jenkins_home:
+    driver: local
