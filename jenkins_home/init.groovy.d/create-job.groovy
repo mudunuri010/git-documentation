@@ -1,9 +1,6 @@
 import jenkins.model.Jenkins
 import org.jenkinsci.plugins.workflow.job.WorkflowJob
-import org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition
-import hudson.plugins.git.GitSCM
-import hudson.plugins.git.BranchSpec
-import hudson.plugins.git.UserRemoteConfig
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition
 import hudson.model.ParametersDefinitionProperty
 import hudson.model.StringParameterDefinition
 import hudson.model.BooleanParameterDefinition
@@ -118,22 +115,129 @@ parameters.add(new BooleanParameterDefinition('FORCE_REMOVE', true, 'Force remov
 def paramProp = new ParametersDefinitionProperty(parameters)
 job.addProperty(paramProp)
 
-// Configure pipeline to load from SCM (Jenkinsfile from Git)
-def scm = new GitSCM([
-    new UserRemoteConfig(
-        'https://github.com/mudunuri010/git-documentation',
-        null,
-        null,
-        'git-credentials'
-    )
-])
-scm.branches = [new BranchSpec('*/master')]
+// Embed the pipeline script directly
+def pipelineScript = '''
+pipeline {
+    agent any
 
-def definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
-definition.setLightweight(false)
+    environment {
+        IMAGE_NAME_TAG = "saimudunuri9/git-documentation:${params.ENVIRONMENT}-b${BUILD_NUMBER}"
+        HOST_PORT = ''
+    }
+
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+
+    stages {
+        stage('Initialize & Get Port') {
+            steps {
+                script {
+                    echo "Starting Build #${BUILD_NUMBER}"
+                    echo "Image to Build/Deploy: ${env.IMAGE_NAME_TAG}"
+                    echo "Environment:     ${params.ENVIRONMENT}"
+                    echo "Target Server:   ${params.SERVER}"
+                    echo "Container Name:  ${params.CONTAINER_NAME}"
+                    echo "Git Branch:      ${params.GIT_BRANCH}"
+                    echo "Git URL:         ${params.GIT_URL}"
+                    echo "Force Remove:    ${params.FORCE_REMOVE}"
+
+                    def portCommand = ["sh", "/var/jenkins_home/scripts/get_port.sh", params.ENVIRONMENT]
+                    def portProcess = portCommand.execute()
+                    portProcess.waitFor()
+                    env.HOST_PORT = portProcess.in.text.trim()
+                    if (portProcess.exitValue() != 0 || !env.HOST_PORT) {
+                        error "Failed to get port for environment ${params.ENVIRONMENT}"
+                    }
+                    echo "Using port '${env.HOST_PORT}' for environment '${params.ENVIRONMENT}'"
+                    echo "------------------------------------------"
+                }
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
+                echo "=== Checking out code from ${params.GIT_URL} branch ${params.GIT_BRANCH} ==="
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${params.GIT_BRANCH}"]],
+                    userRemoteConfigs: [[url: params.GIT_URL, credentialsId: 'git-credentials']],
+                    extensions: [[$class: 'CleanBeforeCheckout']]
+                ])
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo "=== Building Docker Image: ${env.IMAGE_NAME_TAG} ==="
+                    def customImage = docker.build(env.IMAGE_NAME_TAG, ".")
+                    echo "✅ Docker Image Built Successfully"
+                }
+            }
+        }
+
+        stage('Cleanup Existing Container') {
+            when {
+                expression { params.FORCE_REMOVE == true }
+            }
+            steps {
+                script {
+                    echo "=== Checking for existing container: ${params.CONTAINER_NAME} ==="
+                    sh(script: "docker stop ${params.CONTAINER_NAME} || true", returnStatus: true)
+                    sh(script: "docker rm ${params.CONTAINER_NAME} || true", returnStatus: true)
+                    echo "Cleanup finished (errors ignored)."
+                }
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                script {
+                    echo "=== Deploying Application Container: ${params.CONTAINER_NAME} ==="
+                    sh """
+                        docker run -d \\
+                            --name ${params.CONTAINER_NAME} \\
+                            -p ${env.HOST_PORT}:3000 \\
+                            ${env.IMAGE_NAME_TAG}
+                    """
+                    echo "✅ Deployment successful!"
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo "=== Verifying Deployment ==="
+                    sleep 5
+                    sh "docker ps | grep ${params.CONTAINER_NAME}"
+                    echo "✅ Container is running!"
+                    echo "Application should be live at: http://localhost:${env.HOST_PORT}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                echo "🎉 Pipeline successful!"
+                echo "Application '${params.CONTAINER_NAME}' for environment '${params.ENVIRONMENT}' is live."
+                echo "Access it at: http://localhost:${env.HOST_PORT}"
+            }
+        }
+        failure {
+            echo "❌ Pipeline failed. Please review the console output for errors."
+        }
+    }
+}
+'''
+
+def definition = new CpsFlowDefinition(pipelineScript, true)
 job.setDefinition(definition)
 
 // Save the job
 job.save()
 
-println "✅ Job '${jobName}' created successfully with dynamic parameters!"
+println "✅ Job '${jobName}' created successfully with embedded pipeline and dynamic parameters!"
