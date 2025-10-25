@@ -3,38 +3,30 @@ jenkins:
   numExecutors: 2
   mode: NORMAL
 
-  # --- Authentication & Authorization ---
   securityRealm:
     local:
       allowsSignup: false
       users:
         - id: "${ADMIN_USER}"
           password: "${ADMIN_PASS}"
+  
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
 
-  # --- Agent/Node Settings ---
-  nodes:
-    - permanent:
-        name: "built-in"
-        labelString: "master"
-        mode: NORMAL
-        numExecutors: 2
-        remoteFS: "/var/jenkins_home"
-
 security:
-  # moved here from unclassified
   apiToken:
     creationOfLegacyTokenEnabled: false
     tokenGenerationOnCreationEnabled: true
     usageStatisticsEnabled: true
+  
   gitHostKeyVerificationConfiguration:
     sshHostKeyVerificationStrategy: "noHostKeyVerificationStrategy"
 
 unclassified:
   location:
     url: "http://localhost:8080/"
+  
   timestamper:
     systemTimeFormat: "HH:mm:ss"
     elapsedTimeFormat: "ss.S"
@@ -44,10 +36,12 @@ tool:
     installations:
       - name: "DefaultGit"
         home: "git"
+  
   jdk:
     installations:
       - name: "Java21"
         home: "/opt/java/openjdk"
+  
   maven:
     installations:
       - name: "Maven3"

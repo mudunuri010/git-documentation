@@ -9,3 +9,6 @@ docker-workflow:latest
 
 # For JCasC to work
 configuration-as-code:latest
+
+# Job DSL Plugin (needed to create jobs from JCasC)
+job-dsl:latest
