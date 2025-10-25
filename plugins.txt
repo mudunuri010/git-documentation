@@ -12,3 +12,9 @@ configuration-as-code:latest
 
 # Job DSL Plugin (needed to create jobs from JCasC)
 job-dsl:latest
+
+# Git plugin (required for GitSCM in init scripts)
+git:latest
+
+# Git client plugin (dependency)
+git-client:latest
