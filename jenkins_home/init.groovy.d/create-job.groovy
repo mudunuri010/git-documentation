@@ -4,9 +4,6 @@ import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition
 import hudson.model.ParametersDefinitionProperty
 import hudson.model.StringParameterDefinition
 import hudson.model.BooleanParameterDefinition
-import org.biouno.unochoice.ChoiceParameter
-import org.biouno.unochoice.CascadeChoiceParameter
-import org.biouno.unochoice.model.GroovyScript
 
 def jenkins = Jenkins.instance
 def jobName = 'git-documentation-pipeline'
@@ -24,94 +21,121 @@ println "Creating job: ${jobName}"
 def job = jenkins.createProject(WorkflowJob.class, jobName)
 job.setDescription('Automated pipeline for git-documentation with dynamic parameters')
 
-// Define parameters using Active Choices plugin
+// Try to use Active Choices plugin - wrapped in try-catch
 def parameters = []
 
-// 1. ENVIRONMENT - Choice Parameter
-def environmentParam = new ChoiceParameter(
-    'ENVIRONMENT',
-    'Select deployment environment',
-    new GroovyScript(
-        new org.biouno.unochoice.model.ScriptlerScript('', []),
-        'return ["dev", "qa", "staging", "prod"]'
-    ),
-    org.biouno.unochoice.ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
-    false,
-    1
-)
-parameters.add(environmentParam)
-
-// 2. SERVER - Cascade Choice Parameter (depends on ENVIRONMENT)
-def serverScript = '''
 try {
-    def env = ENVIRONMENT ?: "dev"
-    def command = ["sh", "/var/jenkins_home/scripts/get_servers.sh", env]
-    def process = command.execute()
-    process.waitFor()
-    def output = process.in.text.trim()
-    if (process.exitValue() != 0 || !output) { 
-        return ["ERR-ScriptFailed"] 
-    }
-    def servers = output.split(/\\n/) as List
-    return servers ?: ["ERR-NoServers"]
-} catch (Exception e) { 
-    return ["EXCEPTION-" + e.class.simpleName] 
+    // Load Active Choices classes
+    def ChoiceParameter = Class.forName('org.biouno.unochoice.ChoiceParameter')
+    def CascadeChoiceParameter = Class.forName('org.biouno.unochoice.CascadeChoiceParameter')
+    def GroovyScript = Class.forName('org.biouno.unochoice.model.GroovyScript')
+    def ScriptlerScript = Class.forName('org.biouno.unochoice.model.ScriptlerScript')
+    
+    println "Active Choices plugin classes loaded successfully"
+    
+    // 1. ENVIRONMENT - Choice Parameter
+    def environmentScript = new GroovyScript(
+        ScriptlerScript.newInstance('', []),
+        'return ["dev", "qa", "staging", "prod"]'
+    )
+    def environmentParam = ChoiceParameter.newInstance(
+        'ENVIRONMENT',
+        'Select deployment environment',
+        null,
+        environmentScript,
+        ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
+        false,
+        1
+    )
+    parameters.add(environmentParam)
+    println "Added ENVIRONMENT parameter"
+    
+    // 2. SERVER - Cascade Choice Parameter
+    def serverScriptText = '''
+def env = ENVIRONMENT ?: "dev"
+def command = ["sh", "/var/jenkins_home/scripts/get_servers.sh", env]
+def process = command.execute()
+process.waitFor()
+def output = process.in.text.trim()
+if (output) {
+    return output.split(/\\n/) as List
+} else {
+    return ["error"]
 }
 '''
-
-def serverParam = new CascadeChoiceParameter(
-    'SERVER',
-    'Select the server dynamically based on environment',
-    new GroovyScript(
-        new org.biouno.unochoice.model.ScriptlerScript('', []),
-        serverScript
-    ),
-    org.biouno.unochoice.ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
-    'ENVIRONMENT',
-    false,
-    1
-)
-parameters.add(serverParam)
-
-// 3. CONTAINER_NAME - Cascade Choice Parameter (depends on SERVER)
-def containerScript = '''
-try {
-    if (!SERVER || SERVER.startsWith("ERR-") || SERVER.startsWith("EXCEPTION-")) { 
-        return ["error-server-param"] 
-    }
+    
+    def serverScript = new GroovyScript(
+        ScriptlerScript.newInstance('', []),
+        serverScriptText
+    )
+    def serverParam = CascadeChoiceParameter.newInstance(
+        'SERVER',
+        'Select the server dynamically based on environment',
+        null,
+        serverScript,
+        CascadeChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
+        'ENVIRONMENT',
+        false,
+        1
+    )
+    parameters.add(serverParam)
+    println "Added SERVER parameter"
+    
+    // 3. CONTAINER_NAME - Cascade Choice Parameter
+    def containerScriptText = '''
+if (SERVER && !SERVER.startsWith("error")) {
     def command = ["sh", "/var/jenkins_home/scripts/generate_container_name.sh", SERVER]
     def process = command.execute()
     process.waitFor()
     def output = process.in.text.trim()
-    if (process.exitValue() == 0 && output) { 
-        return [output] 
-    } else { 
-        return ["error-generating-name"] 
+    if (output) {
+        return [output]
     }
-} catch (Exception e) { 
-    return ["exception-generating-name"] 
 }
+return ["error"]
 '''
+    
+    def containerScript = new GroovyScript(
+        ScriptlerScript.newInstance('', []),
+        containerScriptText
+    )
+    def containerParam = CascadeChoiceParameter.newInstance(
+        'CONTAINER_NAME',
+        'Auto-generate container name from server selection',
+        null,
+        containerScript,
+        CascadeChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
+        'SERVER',
+        false,
+        1
+    )
+    parameters.add(containerParam)
+    println "Added CONTAINER_NAME parameter"
+    
+} catch (ClassNotFoundException e) {
+    println "⚠️  Active Choices plugin not found or not loaded yet. Using fallback string parameters."
+    println "Error: ${e.message}"
+    
+    // Fallback: Use simple string parameters if Active Choices isn't available
+    parameters.add(new StringParameterDefinition('ENVIRONMENT', 'dev', 'Environment (dev/qa/staging/prod)'))
+    parameters.add(new StringParameterDefinition('SERVER', '', 'Target server'))
+    parameters.add(new StringParameterDefinition('CONTAINER_NAME', '', 'Container name'))
+} catch (Exception e) {
+    println "⚠️  Error creating Active Choices parameters: ${e.message}"
+    e.printStackTrace()
+    
+    // Fallback
+    parameters.add(new StringParameterDefinition('ENVIRONMENT', 'dev', 'Environment (dev/qa/staging/prod)'))
+    parameters.add(new StringParameterDefinition('SERVER', '', 'Target server'))
+    parameters.add(new StringParameterDefinition('CONTAINER_NAME', '', 'Container name'))
+}
 
-def containerParam = new CascadeChoiceParameter(
-    'CONTAINER_NAME',
-    'Auto-generate container name from server selection',
-    new GroovyScript(
-        new org.biouno.unochoice.model.ScriptlerScript('', []),
-        containerScript
-    ),
-    org.biouno.unochoice.ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
-    'SERVER',
-    false,
-    1
-)
-parameters.add(containerParam)
-
-// 4. Regular string parameters
+// Add regular string/boolean parameters
 parameters.add(new StringParameterDefinition('GIT_BRANCH', 'master', 'Git branch to checkout'))
 parameters.add(new StringParameterDefinition('GIT_URL', 'https://github.com/mudunuri010/git-documentation', 'Git repository URL'))
 parameters.add(new BooleanParameterDefinition('FORCE_REMOVE', true, 'Force remove existing container before deploy?'))
 
+println "Adding parameters to job..."
 def paramProp = new ParametersDefinitionProperty(parameters)
 job.addProperty(paramProp)
 
@@ -123,10 +147,6 @@ pipeline {
     environment {
         IMAGE_NAME_TAG = "saimudunuri9/git-documentation:${params.ENVIRONMENT}-b${BUILD_NUMBER}"
         HOST_PORT = ''
-    }
-
-    triggers {
-        pollSCM('H/5 * * * *')
     }
 
     stages {
@@ -142,6 +162,7 @@ pipeline {
                     echo "Git URL:         ${params.GIT_URL}"
                     echo "Force Remove:    ${params.FORCE_REMOVE}"
 
+                    // Get port for environment
                     def portCommand = ["sh", "/var/jenkins_home/scripts/get_port.sh", params.ENVIRONMENT]
                     def portProcess = portCommand.execute()
                     portProcess.waitFor()
@@ -234,10 +255,12 @@ pipeline {
 }
 '''
 
+println "Setting pipeline definition..."
 def definition = new CpsFlowDefinition(pipelineScript, true)
 job.setDefinition(definition)
 
 // Save the job
+println "Saving job..."
 job.save()
 
-println "✅ Job '${jobName}' created successfully with embedded pipeline and dynamic parameters!"
+println "✅ Job '${jobName}' created successfully with dynamic parameters!"
