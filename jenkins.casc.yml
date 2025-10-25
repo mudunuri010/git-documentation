@@ -24,11 +24,7 @@ unclassified:
   location:
     url: "http://localhost:8080/"
 
-tool:
-  git:
-    installations:
-      - name: "DefaultGit"
-        home: "git"
+# Git is automatically available - no need to configure it as a tool
 
 credentials:
   system:

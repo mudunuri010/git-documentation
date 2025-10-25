@@ -14,35 +14,38 @@ import org.biouno.unochoice.model.GroovyScript
 def jenkins = Jenkins.instance
 def jobName = 'git-documentation-pipeline'
 
-// Check if job already exists
-def job = jenkins.getItem(jobName)
+// Delete existing job if it exists
+def existingJob = jenkins.getItem(jobName)
+if (existingJob != null) {
+    println "Deleting existing job: ${jobName}"
+    existingJob.delete()
+}
 
-if (job == null) {
-    println "Creating job: ${jobName}"
-    
-    // Create the pipeline job
-    job = jenkins.createProject(WorkflowJob.class, jobName)
-    job.setDescription('Automated pipeline for git-documentation with dynamic parameters')
-    
-    // Define parameters using Active Choices plugin
-    def parameters = []
-    
-    // 1. ENVIRONMENT - Choice Parameter
-    def environmentParam = new ChoiceParameter(
-        'ENVIRONMENT',
-        'Select deployment environment',
-        new GroovyScript(
-            new org.biouno.unochoice.model.ScriptlerScript('', []),
-            'return ["dev", "qa", "staging", "prod"]'
-        ),
-        org.biouno.unochoice.ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
-        false,
-        1
-    )
-    parameters.add(environmentParam)
-    
-    // 2. SERVER - Cascade Choice Parameter (depends on ENVIRONMENT)
-    def serverScript = '''
+println "Creating job: ${jobName}"
+
+// Create the pipeline job
+def job = jenkins.createProject(WorkflowJob.class, jobName)
+job.setDescription('Automated pipeline for git-documentation with dynamic parameters')
+
+// Define parameters using Active Choices plugin
+def parameters = []
+
+// 1. ENVIRONMENT - Choice Parameter
+def environmentParam = new ChoiceParameter(
+    'ENVIRONMENT',
+    'Select deployment environment',
+    new GroovyScript(
+        new org.biouno.unochoice.model.ScriptlerScript('', []),
+        'return ["dev", "qa", "staging", "prod"]'
+    ),
+    org.biouno.unochoice.ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
+    false,
+    1
+)
+parameters.add(environmentParam)
+
+// 2. SERVER - Cascade Choice Parameter (depends on ENVIRONMENT)
+def serverScript = '''
 try {
     def env = ENVIRONMENT ?: "dev"
     def command = ["sh", "/var/jenkins_home/scripts/get_servers.sh", env]
@@ -58,23 +61,23 @@ try {
     return ["EXCEPTION-" + e.class.simpleName] 
 }
 '''
-    
-    def serverParam = new CascadeChoiceParameter(
-        'SERVER',
-        'Select the server dynamically based on environment',
-        new GroovyScript(
-            new org.biouno.unochoice.model.ScriptlerScript('', []),
-            serverScript
-        ),
-        org.biouno.unochoice.ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
-        'ENVIRONMENT',
-        false,
-        1
-    )
-    parameters.add(serverParam)
-    
-    // 3. CONTAINER_NAME - Cascade Choice Parameter (depends on SERVER)
-    def containerScript = '''
+
+def serverParam = new CascadeChoiceParameter(
+    'SERVER',
+    'Select the server dynamically based on environment',
+    new GroovyScript(
+        new org.biouno.unochoice.model.ScriptlerScript('', []),
+        serverScript
+    ),
+    org.biouno.unochoice.ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
+    'ENVIRONMENT',
+    false,
+    1
+)
+parameters.add(serverParam)
+
+// 3. CONTAINER_NAME - Cascade Choice Parameter (depends on SERVER)
+def containerScript = '''
 try {
     if (!SERVER || SERVER.startsWith("ERR-") || SERVER.startsWith("EXCEPTION-")) { 
         return ["error-server-param"] 
@@ -92,48 +95,45 @@ try {
     return ["exception-generating-name"] 
 }
 '''
-    
-    def containerParam = new CascadeChoiceParameter(
-        'CONTAINER_NAME',
-        'Auto-generate container name from server selection',
-        new GroovyScript(
-            new org.biouno.unochoice.model.ScriptlerScript('', []),
-            containerScript
-        ),
-        org.biouno.unochoice.ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
-        'SERVER',
-        false,
-        1
+
+def containerParam = new CascadeChoiceParameter(
+    'CONTAINER_NAME',
+    'Auto-generate container name from server selection',
+    new GroovyScript(
+        new org.biouno.unochoice.model.ScriptlerScript('', []),
+        containerScript
+    ),
+    org.biouno.unochoice.ChoiceParameter.PARAMETER_TYPE_SINGLE_SELECT,
+    'SERVER',
+    false,
+    1
+)
+parameters.add(containerParam)
+
+// 4. Regular string parameters
+parameters.add(new StringParameterDefinition('GIT_BRANCH', 'master', 'Git branch to checkout'))
+parameters.add(new StringParameterDefinition('GIT_URL', 'https://github.com/mudunuri010/git-documentation', 'Git repository URL'))
+parameters.add(new BooleanParameterDefinition('FORCE_REMOVE', true, 'Force remove existing container before deploy?'))
+
+def paramProp = new ParametersDefinitionProperty(parameters)
+job.addProperty(paramProp)
+
+// Configure pipeline to load from SCM (Jenkinsfile from Git)
+def scm = new GitSCM([
+    new UserRemoteConfig(
+        'https://github.com/mudunuri010/git-documentation',
+        null,
+        null,
+        'git-credentials'
     )
-    parameters.add(containerParam)
-    
-    // 4. Regular string parameters
-    parameters.add(new StringParameterDefinition('GIT_BRANCH', 'master', 'Git branch to checkout'))
-    parameters.add(new StringParameterDefinition('GIT_URL', 'https://github.com/mudunuri010/git-documentation', 'Git repository URL'))
-    parameters.add(new BooleanParameterDefinition('FORCE_REMOVE', true, 'Force remove existing container before deploy?'))
-    
-    def paramProp = new ParametersDefinitionProperty(parameters)
-    job.addProperty(paramProp)
-    
-    // Configure pipeline to load from SCM (Jenkinsfile from Git)
-    def scm = new GitSCM([
-        new UserRemoteConfig(
-            'https://github.com/mudunuri010/git-documentation',
-            null,
-            null,
-            'git-credentials'
-        )
-    ])
-    scm.branches = [new BranchSpec('*/master')]
-    
-    def definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
-    definition.setLightweight(false)
-    job.setDefinition(definition)
-    
-    // Save the job
-    job.save()
-    
-    println "✅ Job '${jobName}' created successfully with dynamic parameters!"
-} else {
-    println "ℹ️  Job '${jobName}' already exists. Skipping creation."
-}
+])
+scm.branches = [new BranchSpec('*/master')]
+
+def definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
+definition.setLightweight(false)
+job.setDefinition(definition)
+
+// Save the job
+job.save()
+
+println "✅ Job '${jobName}' created successfully with dynamic parameters!"
