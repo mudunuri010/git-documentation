@@ -49,7 +49,7 @@ println "📝 Adding parameters to job..."
 def paramProp = new ParametersDefinitionProperty(parameters)
 job.addProperty(paramProp)
 
-// Embedded pipeline script with dynamic parameter population
+// Embedded pipeline script with dynamic parameter population and FIXED PORT HANDLING
 def pipelineScript = '''
 pipeline {
     agent any
@@ -78,11 +78,23 @@ pipeline {
                     nameProc.waitFor()
                     env.CONTAINER_NAME = params.CONTAINER_NAME && !params.CONTAINER_NAME.isEmpty() ? params.CONTAINER_NAME : nameProc.in.text.trim()
                     
-                    // Get port
+                    // Get port with validation
                     def portCmd = ["sh", "/var/jenkins_home/scripts/get_port.sh", params.ENVIRONMENT]
                     def portProc = portCmd.execute()
                     portProc.waitFor()
                     env.HOST_PORT = portProc.in.text.trim()
+                    
+                    // CRITICAL FIX: Validate port and provide fallback
+                    if (!env.HOST_PORT || env.HOST_PORT.isEmpty() || env.HOST_PORT == 'null') {
+                        def defaultPorts = [dev: '3001', qa: '3002', staging: '3003', prod: '3004']
+                        env.HOST_PORT = defaultPorts[params.ENVIRONMENT] ?: '8080'
+                        echo "⚠️ Port script failed, using default port: ${env.HOST_PORT}"
+                    }
+                    
+                    // Validate that we have a valid port number
+                    if (!env.HOST_PORT.isInteger()) {
+                        error "Invalid port value: ${env.HOST_PORT}"
+                    }
                     
                     echo "=== Build Configuration ==="
                     echo "Environment:   ${params.ENVIRONMENT}"
