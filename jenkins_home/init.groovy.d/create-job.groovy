@@ -85,21 +85,21 @@ pipelineJob('git-documentation-pipeline') {
         booleanParam('FORCE_REMOVE', true, 'Force remove existing container before deploy?')
     }
 
-    definition {
-        cpsScm {
-            scm {
-                git {
-                    remote {
-                        url('https://github.com/mudunuri010/git-documentation')
-                    }
-                    branch('*/main')
+   definition {
+    cpsScm {
+        scm {
+            git {
+                remote {
+                    url('https://github.com/mudunuri010/git-documentation')
+                    credentials('git-credentials')
                 }
+                branch('*/main')
             }
-            scriptPath('Jenkinsfile')
         }
+        scriptPath('Jenkinsfile')
     }
 }
-'''
+ 
 
 // ✅ Add Job DSL build step correctly
 def jobDslBuilder = new ExecuteDslScripts(
