@@ -25,7 +25,7 @@ services:
       - jenkins_home:/var/jenkins_home
       - ./jenkins.casc.yml:/var/jenkins_home/casc_configs/jenkins.casc.yml
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./jenkins_home/init.groovy.d:/var/jenkins_home/init.groovy.d  
+     
       - ./scripts:/var/jenkins_home/scripts
 
 volumes:

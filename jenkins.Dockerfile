@@ -29,7 +29,7 @@ RUN mkdir -p /var/jenkins_home/init.groovy.d && \
     chown -R jenkins:jenkins /var/jenkins_home
 
 # Copy init groovy script and scripts
-COPY jenkins_home/init.groovy.d/create-job.groovy /usr/share/jenkins/ref/init.groovy.d/create-job.groovy
+
 COPY scripts/ /var/jenkins_home/scripts/
 
 # Make scripts executable
