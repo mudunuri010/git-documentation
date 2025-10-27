@@ -28,11 +28,11 @@ RUN mkdir -p /var/jenkins_home/init.groovy.d && \
     mkdir -p /var/jenkins_home/scripts && \
     chown -R jenkins:jenkins /var/jenkins_home
 
-# Copy init groovy script and scripts
-
+# ✅ Copy init groovy script AND scripts
+COPY jenkins_home/init.groovy.d/create-job.groovy /usr/share/jenkins/ref/init.groovy.d/create-job.groovy
 COPY scripts/ /var/jenkins_home/scripts/
 
-# Make scripts executable
+# Make scripts executable and set permissions
 RUN chmod +x /var/jenkins_home/scripts/*.sh && \
     chown -R jenkins:jenkins /var/jenkins_home/scripts /usr/share/jenkins/ref/init.groovy.d
 
