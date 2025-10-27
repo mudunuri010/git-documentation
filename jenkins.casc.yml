@@ -17,16 +17,7 @@ unclassified:
   location:
     url: "http://localhost:8080/"
 
-  # Load the required plugins (from plugins.txt)
-  pluginManager:
-    plugins:
-      - id: configuration-as-code
-      - id: job-dsl
-      - id: workflow-aggregator
-      - id: uno-choice
-      - id: git
-      - id: git-client
-      - id: docker-workflow
+  
 
 jobs:
   - script: >
