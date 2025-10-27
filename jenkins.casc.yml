@@ -1,42 +1,36 @@
 jenkins:
-  systemMessage: "🚀 Jenkins configured as code - Automated CI/CD"
+  systemMessage: "🚀 Jenkins with Configuration as Code (JCasC)"
   numExecutors: 2
+  mode: NORMAL
 
   securityRealm:
     local:
       allowsSignup: false
       users:
-        - id: admin
-          password: admin
-
+        - id: "${ADMIN_USER}"
+          password: "${ADMIN_PASS}"
+  
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
+
+security:
+  apiToken:
+    creationOfLegacyTokenEnabled: false
+    tokenGenerationOnCreationEnabled: true
+    usageStatisticsEnabled: true
 
 unclassified:
   location:
     url: "http://localhost:8080/"
 
-  
-
-jobs:
-  - script: >
-      pipelineJob('git-documentation-pipeline') {
-        description('CI/CD pipeline for git-documentation project')
-        parameters {
-          choiceParam('ENVIRONMENT', ['dev', 'qa', 'staging', 'prod'], 'Select environment')
-          stringParam('GIT_BRANCH', 'main', 'Git branch to build')
-        }
-        definition {
-          cpsScm {
-            scm {
-              git {
-                remote('https://github.com/mudunuri010/git-documentation')
-                branch('*/main')
-                extensions { cleanBeforeCheckout() }
-              }
-            }
-            scriptPath('Jenkinsfile')
-          }
-        }
-      }
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: "git-credentials"
+              username: "${GIT_USERNAME}"
+              password: "${GIT_PASSWORD}"
+              description: "GitHub credentials (from .env)"
