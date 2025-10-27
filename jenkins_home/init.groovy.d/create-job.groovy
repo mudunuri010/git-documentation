@@ -25,13 +25,15 @@ def job = jenkins.createProject(WorkflowJob.class, jobName)
 job.setDescription('Automated CI/CD pipeline for git-documentation')
 
 // Configure to use Jenkinsfile from Git repository
+def userRemoteConfig = new UserRemoteConfig(
+    'https://github.com/mudunuri010/git-documentation',
+    '',
+    '',
+    'git-credentials'
+)
+
 def scm = new GitSCM(
-    [new UserRemoteConfig(
-        'https://github.com/mudunuri010/git-documentation',
-        '',
-        '',
-        'git-credentials'
-    )],
+    [userRemoteConfig],
     [new BranchSpec('*/master')],
     false,
     [],
@@ -40,8 +42,9 @@ def scm = new GitSCM(
     [new CleanBeforeCheckout()]
 )
 
+// Use Jenkinsfile from the repository
 def definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
-definition.setLightweight(true)
+definition.setLightweight(false)  // Set to false to ensure full checkout
 job.setDefinition(definition)
 
 // Save the job
@@ -49,4 +52,5 @@ println "💾 Saving job..."
 job.save()
 
 println "✅ Job '${jobName}' created successfully!"
-println "📝 The job will use the Jenkinsfile from the repository with all parameter definitions."
+println "📝 The job will use the Jenkinsfile from the Git repository."
+println "🔄 Parameters will be loaded from the Jenkinsfile properties() block."
