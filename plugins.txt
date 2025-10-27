@@ -1,20 +1,7 @@
-# Core Pipeline
-workflow-aggregator:latest
-
-# For Dynamic Parameters (CascadeChoiceParameter)
-uno-choice:latest
-
-# For running Docker commands in the pipeline
-docker-workflow:latest
-
-# For JCasC to work
 configuration-as-code:latest
-
-# Job DSL Plugin (needed to create jobs from JCasC)
 job-dsl:latest
-
-# Git plugin (required for GitSCM in init scripts)
+workflow-aggregator:latest
+uno-choice:latest
 git:latest
-
-# Git client plugin (dependency)
 git-client:latest
+docker-workflow:latest
