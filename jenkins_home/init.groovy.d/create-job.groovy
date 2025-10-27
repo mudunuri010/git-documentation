@@ -44,7 +44,7 @@ def scm = new GitSCM(
 
 // Use Jenkinsfile from the repository
 def definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
-definition.setLightweight(false)  // Set to false to ensure full checkout
+definition.setLightweight(false)
 job.setDefinition(definition)
 
 // Save the job

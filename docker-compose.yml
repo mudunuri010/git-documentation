@@ -1,5 +1,3 @@
-# version: "3.9"
-
 services:
   jenkins:
     build:
@@ -25,8 +23,8 @@ services:
       - jenkins_home:/var/jenkins_home
       - ./jenkins.casc.yml:/var/jenkins_home/casc_configs/jenkins.casc.yml
       - /var/run/docker.sock:/var/run/docker.sock
-     
       - ./scripts:/var/jenkins_home/scripts
+      - ./jenkins_home/init.groovy.d/create-job.groovy:/usr/share/jenkins/ref/init.groovy.d/create-job.groovy
 
 volumes:
   jenkins_home:
