@@ -62,15 +62,17 @@ pipeline {
                         script: "/var/jenkins_home/scripts/get_servers.sh ${params.ENVIRONMENT}",
                         returnStdout: true
                     ).trim()
-                    def servers = serversOutput.split('\n')
+                    def servers = serversOutput.split(/\n/)
                     echo "Available servers: ${servers.join(', ')}"
+                    echo "DEBUG: servers array size = ${servers.size()}"
+                    echo "DEBUG: servers[0] = '${servers[0]}'"
                     
                     // 2. Select target server (use provided or auto-select first)
                     if (params.SERVER && !params.SERVER.isEmpty()) {
                         env.TARGET_SERVER = params.SERVER
                         echo "Using specified server: ${env.TARGET_SERVER}"
                     } else {
-                        env.TARGET_SERVER = servers[0]
+                        env.TARGET_SERVER = servers[0].trim()
                         echo "Auto-selected server: ${env.TARGET_SERVER}"
                     }
                     
@@ -80,7 +82,7 @@ pipeline {
                         echo "Using specified container name: ${env.CONTAINER_NAME}"
                     } else {
                         def containerName = sh(
-                            script: "/var/jenkins_home/scripts/generate_container_name.sh ${env.TARGET_SERVER}",
+                            script: "/var/jenkins_home/scripts/generate_container_name.sh '${env.TARGET_SERVER}'",
                             returnStdout: true
                         ).trim()
                         env.CONTAINER_NAME = containerName
