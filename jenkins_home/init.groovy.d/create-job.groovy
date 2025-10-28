@@ -1,56 +1,127 @@
 import jenkins.model.Jenkins
-import org.jenkinsci.plugins.workflow.job.WorkflowJob
-import org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition
-import hudson.plugins.git.GitSCM
-import hudson.plugins.git.BranchSpec
-import hudson.plugins.git.UserRemoteConfig
-import hudson.plugins.git.extensions.impl.CleanBeforeCheckout
+import javaposse.jobdsl.plugin.ExecuteDslScripts
+import javaposse.jobdsl.plugin.RemovedJobAction
+import javaposse.jobdsl.plugin.RemovedViewAction
+import javaposse.jobdsl.plugin.LookupStrategy
 
 def jenkins = Jenkins.instance
-def jobName = 'git-documentation-pipeline'
+def seedJobName = 'seed-create-pipeline'
 
-println "🔍 Checking for existing job: ${jobName}"
+// Delete existing seed and pipeline jobs if they exist
+jenkins.getItem(seedJobName)?.delete()
+jenkins.getItem('git-documentation-pipeline')?.delete()
 
-// Delete existing job if it exists
-def existingJob = jenkins.getItem(jobName)
-if (existingJob != null) {
-    println "🧹 Deleting existing job..."
-    existingJob.delete()
+println "🧱 Creating new seed job..."
+
+def seedJob = jenkins.createProject(hudson.model.FreeStyleProject, seedJobName)
+seedJob.setDescription('Seed job to create git-documentation pipeline with dynamic dropdown parameters.')
+
+def jobDslScript = '''
+pipelineJob("git-documentation-pipeline") {
+    description("Pipeline for git-documentation with dynamic dropdown parameters")
+
+    parameters {
+        // 1️⃣ Environment dropdown
+        activeChoiceParam("ENVIRONMENT") {
+            description("Select deployment environment")
+            choiceType("SINGLE_SELECT")
+            groovyScript {
+                script("return ['dev', 'qa', 'staging', 'prod']")
+                fallbackScript("return ['dev']")
+            }
+        }
+
+        // 2️⃣ Server dropdown dynamically populated
+        activeChoiceReactiveParam("SERVER") {
+            description("Select server based on environment")
+            choiceType("SINGLE_SELECT")
+            referencedParameter("ENVIRONMENT")
+            groovyScript {
+                script('''
+                    def env = ENVIRONMENT ?: "dev"
+                    def cmd = ["bash", "/var/jenkins_home/scripts/get_servers.sh", env]
+                    def process = cmd.execute()
+                    process.waitFor()
+                    def out = process.in.text.trim()
+                    return out ? out.split("\\n") : ["no-server-found"]
+                ''')
+                fallbackScript("return ['fallback-server']")
+            }
+        }
+
+        // 3️⃣ Container name auto-generated
+        activeChoiceReactiveParam("CONTAINER_NAME") {
+            description("Auto-generated container name based on server")
+            choiceType("SINGLE_SELECT")
+            referencedParameter("SERVER")
+            groovyScript {
+                script('''
+                    if (SERVER && !SERVER.contains("error") && !SERVER.contains("fallback")) {
+                        def cmd = ["bash", "/var/jenkins_home/scripts/generate_container_name.sh", SERVER]
+                        def process = cmd.execute()
+                        process.waitFor()
+                        def out = process.in.text.trim()
+                        return out ? [out] : ["error-container"]
+                    }
+                    return ["no-container"]
+                ''')
+                fallbackScript("return ['fallback-container']")
+            }
+        }
+
+        // 4️⃣ Port auto-generated
+        activeChoiceReactiveParam("PORT") {
+            description("Auto-selected port based on environment")
+            choiceType("SINGLE_SELECT")
+            referencedParameter("ENVIRONMENT")
+            groovyScript {
+                script('''
+                    def env = ENVIRONMENT ?: "dev"
+                    def cmd = ["bash", "/var/jenkins_home/scripts/get_port.sh", env]
+                    def process = cmd.execute()
+                    process.waitFor()
+                    def out = process.in.text.trim()
+                    return out ? [out] : ["error-port"]
+                ''')
+                fallbackScript("return ['3000']")
+            }
+        }
+
+        // Optional additional params
+        stringParam("GIT_BRANCH", "master", "Git branch to checkout")
+        booleanParam("FORCE_REMOVE", true, "Remove existing container before deploying?")
+    }
+
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url("https://github.com/mudunuri010/git-documentation")
+                        credentials("git-credentials")
+                    }
+                    branch("*/master")
+                }
+            }
+            scriptPath("Jenkinsfile")
+        }
+    }
 }
+'''
 
-println "⚙️ Creating new job: ${jobName}"
-
-// Create the pipeline job
-def job = jenkins.createProject(WorkflowJob.class, jobName)
-job.setDescription('Automated CI/CD pipeline for git-documentation')
-
-// Configure to use Jenkinsfile from Git repository
-def userRemoteConfig = new UserRemoteConfig(
-    'https://github.com/mudunuri010/git-documentation',
-    '',
-    '',
-    'git-credentials'
-)
-
-def scm = new GitSCM(
-    [userRemoteConfig],
-    [new BranchSpec('*/master')],
+def jobDslBuilder = new ExecuteDslScripts(
+    new ExecuteDslScripts.ScriptLocation(null, null, jobDslScript),
     false,
-    [],
-    null,
-    null,
-    [new CleanBeforeCheckout()]
+    RemovedJobAction.DELETE,
+    RemovedViewAction.DELETE,
+    LookupStrategy.JENKINS_ROOT,
+    null
 )
 
-// Use Jenkinsfile from the repository
-def definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
-definition.setLightweight(false)
-job.setDefinition(definition)
+seedJob.getBuildersList().add(jobDslBuilder)
+seedJob.save()
+seedJob.scheduleBuild2(0)
 
-// Save the job
-println "💾 Saving job..."
-job.save()
+println "✅ Seed job and pipeline created successfully."
+'''
 
-println "✅ Job '${jobName}' created successfully!"
-println "📝 The job will use the Jenkinsfile from the Git repository."
-println "🔄 Parameters will be loaded from the Jenkinsfile properties() block."
