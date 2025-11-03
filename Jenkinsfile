@@ -1,37 +1,128 @@
 // Define Docker image name prefix
 def dockerImagePrefix = 'saimudunuri9'
 
+// Define dynamic parameters using Active Choices Plugin
 properties([
     parameters([
-        choice(
+        // 1️⃣ Environment dropdown
+        [
+            $class: 'ChoiceParameter',
             name: 'ENVIRONMENT',
-            choices: ['dev', 'qa', 'staging', 'prod'],
-            description: 'Select deployment environment'
-        ),
-        string(
+            description: 'Select deployment environment',
+            choiceType: 'PT_SINGLE_SELECT',
+            script: [
+                $class: 'GroovyScript',
+                script: [
+                    script: "return ['dev', 'qa', 'staging', 'prod']",
+                    sandbox: true
+                ],
+                fallbackScript: [
+                    script: "return ['dev']",
+                    sandbox: true
+                ]
+            ]
+        ],
+        
+        // 2️⃣ Server dropdown dynamically populated based on environment
+        [
+            $class: 'CascadeChoiceParameter',
             name: 'SERVER',
-            defaultValue: '',
-            description: 'Target server (leave empty to auto-select first server for environment)'
-        ),
-        string(
+            description: 'Select server based on environment',
+            choiceType: 'PT_SINGLE_SELECT',
+            referencedParameters: 'ENVIRONMENT',
+            script: [
+                $class: 'GroovyScript',
+                script: [
+                    script: '''
+                        def env = ENVIRONMENT ?: "dev"
+                        def cmd = ["bash", "/var/jenkins_home/scripts/get_servers.sh", env]
+                        def process = cmd.execute()
+                        process.waitFor()
+                        def output = process.in.text.trim()
+                        return output ? output.split("\\n").toList() : ["no-server-found"]
+                    ''',
+                    sandbox: false
+                ],
+                fallbackScript: [
+                    script: "return ['fallback-server']",
+                    sandbox: true
+                ]
+            ]
+        ],
+        
+        // 3️⃣ Container name auto-generated based on server
+        [
+            $class: 'CascadeChoiceParameter',
             name: 'CONTAINER_NAME',
-            defaultValue: '',
-            description: 'Container name (leave empty to auto-generate)'
-        ),
+            description: 'Auto-generated container name based on server',
+            choiceType: 'PT_SINGLE_SELECT',
+            referencedParameters: 'SERVER',
+            script: [
+                $class: 'GroovyScript',
+                script: [
+                    script: '''
+                        if (SERVER && !SERVER.contains("error") && !SERVER.contains("fallback")) {
+                            def cmd = ["bash", "/var/jenkins_home/scripts/generate_container_name.sh", SERVER]
+                            def process = cmd.execute()
+                            process.waitFor()
+                            def output = process.in.text.trim()
+                            return output ? [output] : ["error-container"]
+                        }
+                        return ["no-container"]
+                    ''',
+                    sandbox: false
+                ],
+                fallbackScript: [
+                    script: "return ['fallback-container']",
+                    sandbox: true
+                ]
+            ]
+        ],
+        
+        // 4️⃣ Port auto-generated based on environment
+        [
+            $class: 'CascadeChoiceParameter',
+            name: 'PORT',
+            description: 'Auto-selected port based on environment',
+            choiceType: 'PT_SINGLE_SELECT',
+            referencedParameters: 'ENVIRONMENT',
+            script: [
+                $class: 'GroovyScript',
+                script: [
+                    script: '''
+                        def env = ENVIRONMENT ?: "dev"
+                        def cmd = ["bash", "/var/jenkins_home/scripts/get_port.sh", env]
+                        def process = cmd.execute()
+                        process.waitFor()
+                        def output = process.in.text.trim()
+                        return output ? [output] : ["error-port"]
+                    ''',
+                    sandbox: false
+                ],
+                fallbackScript: [
+                    script: "return ['3000']",
+                    sandbox: true
+                ]
+            ]
+        ],
+        
+        // Optional additional params
         string(
             name: 'GIT_BRANCH',
             defaultValue: 'master',
             description: 'Git branch to checkout'
         ),
+        
         string(
             name: 'GIT_URL',
             defaultValue: 'https://github.com/mudunuri010/git-documentation',
             description: 'Git repository URL'
         ),
+        
         booleanParam(
             name: 'FORCE_REMOVE',
             defaultValue: true,
-            description: 'Force remove existing container before deploy?'
+            description: 'Remove existing container before deploying?'
         )
     ])
 ])
@@ -41,9 +132,9 @@ pipeline {
 
     environment {
         IMAGE_NAME_TAG = "${dockerImagePrefix}/git-documentation:${params.ENVIRONMENT}-b${BUILD_NUMBER}"
-        TARGET_SERVER = ''
-        CONTAINER_NAME = ''
-        HOST_PORT = ''
+        FINAL_SERVER = "${params.SERVER}"
+        FINAL_CONTAINER_NAME = "${params.CONTAINER_NAME}"
+        FINAL_PORT = "${params.PORT}"
     }
 
     triggers {
@@ -51,60 +142,23 @@ pipeline {
     }
 
     stages {
-        stage('Setup Configuration') {
+        stage('Display Configuration') {
             steps {
                 script {
-                    echo "=== Automated Configuration Setup ==="
-                    echo "Environment: ${params.ENVIRONMENT}"
-                    
-                    // 1. Get available servers for environment
-                    def serversOutput = sh(
-                        script: "/var/jenkins_home/scripts/get_servers.sh ${params.ENVIRONMENT}",
-                        returnStdout: true
-                    ).trim()
-                    def servers = serversOutput.split(/\n/)
-                    echo "Available servers: ${servers.join(', ')}"
-                    echo "DEBUG: servers array size = ${servers.size()}"
-                    echo "DEBUG: servers[0] = '${servers[0]}'"
-                    
-                    // 2. Select target server (use provided or auto-select first)
-                    if (params.SERVER && !params.SERVER.isEmpty()) {
-                        env.TARGET_SERVER = params.SERVER
-                        echo "Using specified server: ${env.TARGET_SERVER}"
-                    } else {
-                        env.TARGET_SERVER = servers[0].trim()
-                        echo "Auto-selected server: ${env.TARGET_SERVER}"
-                    }
-                    
-                    // 3. Generate container name
-                    if (params.CONTAINER_NAME && !params.CONTAINER_NAME.isEmpty()) {
-                        env.CONTAINER_NAME = params.CONTAINER_NAME
-                        echo "Using specified container name: ${env.CONTAINER_NAME}"
-                    } else {
-                        def containerName = sh(
-                            script: "/var/jenkins_home/scripts/generate_container_name.sh '${env.TARGET_SERVER}'",
-                            returnStdout: true
-                        ).trim()
-                        env.CONTAINER_NAME = containerName
-                        echo "Auto-generated container name: ${env.CONTAINER_NAME}"
-                    }
-                    
-                    // 4. Get port for environment
-                    def port = sh(
-                        script: "/var/jenkins_home/scripts/get_port.sh ${params.ENVIRONMENT}",
-                        returnStdout: true
-                    ).trim()
-                    env.HOST_PORT = port
-                    echo "Assigned port: ${env.HOST_PORT}"
-                    
-                    // 5. Summary
-                    echo "=== Configuration Complete ==="
-                    echo "Environment:   ${params.ENVIRONMENT}"
-                    echo "Target Server: ${env.TARGET_SERVER}"
-                    echo "Container:     ${env.CONTAINER_NAME}"
-                    echo "Port:          ${env.HOST_PORT}"
-                    echo "Image:         ${env.IMAGE_NAME_TAG}"
-                    echo "=============================="
+                    echo "╔════════════════════════════════════════════════════════╗"
+                    echo "║        DEPLOYMENT CONFIGURATION                        ║"
+                    echo "╚════════════════════════════════════════════════════════╝"
+                    echo ""
+                    echo "📦 Environment:     ${params.ENVIRONMENT}"
+                    echo "🖥️  Target Server:  ${env.FINAL_SERVER}"
+                    echo "🐳 Container Name:  ${env.FINAL_CONTAINER_NAME}"
+                    echo "🌐 Port:            ${env.FINAL_PORT}"
+                    echo "🏷️  Image Tag:      ${env.IMAGE_NAME_TAG}"
+                    echo "🌿 Git Branch:      ${params.GIT_BRANCH}"
+                    echo "🔗 Git URL:         ${params.GIT_URL}"
+                    echo "🗑️  Force Remove:   ${params.FORCE_REMOVE}"
+                    echo ""
+                    echo "════════════════════════════════════════════════════════"
                 }
             }
         }
@@ -137,10 +191,10 @@ pipeline {
             }
             steps {
                 script {
-                    echo "=== Checking for existing container: ${env.CONTAINER_NAME} ==="
-                    sh(script: "docker stop ${env.CONTAINER_NAME} || true", returnStatus: true)
-                    sh(script: "docker rm ${env.CONTAINER_NAME} || true", returnStatus: true)
-                    echo "Cleanup finished (errors ignored)."
+                    echo "=== Checking for existing container: ${env.FINAL_CONTAINER_NAME} ==="
+                    sh(script: "docker stop ${env.FINAL_CONTAINER_NAME} || true", returnStatus: true)
+                    sh(script: "docker rm ${env.FINAL_CONTAINER_NAME} || true", returnStatus: true)
+                    echo "✅ Cleanup finished (errors ignored)."
                 }
             }
         }
@@ -148,11 +202,11 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 script {
-                    echo "=== Deploying Application Container: ${env.CONTAINER_NAME} ==="
+                    echo "=== Deploying Application Container: ${env.FINAL_CONTAINER_NAME} ==="
                     sh """
                         docker run -d \\
-                            --name ${env.CONTAINER_NAME} \\
-                            -p ${env.HOST_PORT}:3000 \\
+                            --name ${env.FINAL_CONTAINER_NAME} \\
+                            -p ${env.FINAL_PORT}:3000 \\
                             ${env.IMAGE_NAME_TAG}
                     """
                     echo "✅ Deployment successful!"
@@ -165,9 +219,9 @@ pipeline {
                 script {
                     echo "=== Verifying Deployment ==="
                     sleep 5
-                    sh "docker ps | grep ${env.CONTAINER_NAME}"
+                    sh "docker ps | grep ${env.FINAL_CONTAINER_NAME}"
                     echo "✅ Container is running!"
-                    echo "🌐 Application live at: http://localhost:${env.HOST_PORT}"
+                    echo "🌐 Application live at: http://localhost:${env.FINAL_PORT}"
                 }
             }
         }
@@ -176,15 +230,30 @@ pipeline {
     post {
         success {
             script {
-                echo "🎉 Pipeline successful!"
-                echo "📦 Application: ${env.CONTAINER_NAME}"
-                echo "🌍 Environment: ${params.ENVIRONMENT}"
-                echo "🖥️  Server: ${env.TARGET_SERVER}"
-                echo "🌐 Access: http://localhost:${env.HOST_PORT}"
+                echo ""
+                echo "╔════════════════════════════════════════════════════════╗"
+                echo "║           🎉 PIPELINE SUCCESSFUL! 🎉                   ║"
+                echo "╚════════════════════════════════════════════════════════╝"
+                echo ""
+                echo "📦 Application:  ${env.FINAL_CONTAINER_NAME}"
+                echo "🌍 Environment:  ${params.ENVIRONMENT}"
+                echo "🖥️  Server:      ${env.FINAL_SERVER}"
+                echo "🌐 Access URL:   http://localhost:${env.FINAL_PORT}"
+                echo ""
+                echo "════════════════════════════════════════════════════════"
             }
         }
         failure {
-            echo "❌ Pipeline failed. Please review the console output for errors."
+            echo ""
+            echo "╔════════════════════════════════════════════════════════╗"
+            echo "║           ❌ PIPELINE FAILED ❌                        ║"
+            echo "╚════════════════════════════════════════════════════════╝"
+            echo ""
+            echo "Please review the console output for errors."
+            echo ""
+        }
+        always {
+            echo "Pipeline execution completed at: ${new Date()}"
         }
     }
 }
